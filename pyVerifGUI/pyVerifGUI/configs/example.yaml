@@ -1,0 +1,14 @@
+#####
+# Minimum required for parsing
+
+top_module: alu
+repo_name: alu
+core_dir: ../example/alu
+working_dir: tb/verilator/
+rtl_dirs:
+  rtl:
+    recurse: false
+  rtl/unitblocks:
+    recurse: true
+parse_args: ""
+verif_tools_path: ../../

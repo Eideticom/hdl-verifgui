@@ -1,0 +1,9 @@
+oyaml
+pyparsing
+pathlib
+sympy
+distro
+psutil
+pyside2
+qtpy
+rSVParser
