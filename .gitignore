@@ -1,0 +1,3 @@
+# Python-specific ignores
+__pycache__
+.venv
