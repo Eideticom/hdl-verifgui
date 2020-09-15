@@ -17,6 +17,7 @@ import os
 from pyVerifGUI.parsers import parse_verilator_error
 from pyVerifGUI.gui.tabs.runnerwidget import RunnerGUI as NewRunnerGUI
 from pyVerifGUI.gui.editor import Editor
+from pyVerifGUI.gui.config_editor import ConfigEditorDialog
 
 
 class OverviewTab(QtWidgets.QWidget):
@@ -88,17 +89,32 @@ class OverviewTab(QtWidgets.QWidget):
         self.git_layout.addWidget(self.git_status)
         self.info_config_splitter.addWidget(self.git_widget)
 
-        #### Config editor
-        self.config_editor = Editor(self.info_config_splitter, self.config)
-        self.config.new_config_selected.connect(self.loadConfigInEditor)
-        self.info_config_splitter.addWidget(self.config_editor)
+        #### launch config editor
+        self.config_dialog = ConfigEditorDialog(self)
+        self.open_config_editor = QtWidgets.QPushButton("Create Configuration", self)
+        self.open_config_editor.clicked.connect(self._open_config_editor)
+        self.config.create_new_config.connect(self.config_dialog.open)
+        self.info_config_splitter.addWidget(self.open_config_editor)
         self.info_config_splitter.setSizes([100, 100])
+        self.config_selected = False
 
         self.main_layout.addWidget(self.info_config_splitter)
 
         self.config.buildChanged.connect(self.gitStatus)
 
         self.main_layout.addWidget(self.runner, 6, 0, 1, 2)
+
+    def new_config_selected(self):
+        self.config_selected = True
+        self.open_config_editor.setText("Edit Configuration")
+
+    def _open_config_editor(self, clicked=False, path=None) -> bool:
+        if not path:
+            if not self.config_selected:
+                return self.config_dialog.open()
+            path = self.config_location.text()
+
+        return self.config_dialog.open(path)
 
     def loadConfigInEditor(self, location: str):
         """Slot that loads the emitted config location into the editor"""

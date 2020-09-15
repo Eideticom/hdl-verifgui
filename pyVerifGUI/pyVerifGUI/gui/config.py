@@ -7,6 +7,7 @@ __author__ = "David Lenfesty"
 __copyright__ = "Copyright (c) 2020 Eidetic Communications"
 
 import sys
+import os
 import importlib
 from os import PathLike
 from oyaml import full_load, dump
@@ -50,6 +51,8 @@ class Config(QtCore.QObject):
     buildChanged = QtCore.Signal()
     # Passes the string location of the selected config
     new_config_selected = QtCore.Signal(str)
+    # Signal to create new config at given location
+    create_new_config = QtCore.Signal(str)
 
     log_output = QtCore.Signal(str)
 
@@ -60,7 +63,7 @@ class Config(QtCore.QObject):
         # for convenience. It's easy for me *to use*, but really not a nice implementation
         self.app_path = app_path
 
-        self.new_config_dialog = ConfigDialog()
+        #self.new_config_dialog = ConfigDialog()
 
         self.new_build = False
         self.is_valid = False
@@ -69,69 +72,27 @@ class Config(QtCore.QObject):
         """I don't like typing self.config.config everywhere so "directly" access the config dictionary"""
         return self.config[item]
 
-    def validate_config(self, config: ConfigType) -> bool:
+    def validate_config(self, config: ConfigType, config_location) -> bool:
         """Checks as much of the config as possible to determine if it is valid"""
         # Import some important variables
         try:
-            core_dir_path = Path(config["core_dir"])
+            core_dir_path = Path(config_location).parent / config["core_dir"]
         except KeyError:
             self.log_output.emit(
-                "<CONFIG> missing 'verif_tools_path' or 'core_dir'")
+                "<CONFIG> missing 'core_dir'")
             return False
 
         if not core_dir_path.exists() or not core_dir_path.is_dir():
             self.log_output.emit(
                 f"<CONFIG> incorrect 'core_dir', verify the following path: {core_dir_path}"
             )
-
-        # Test that all specified genfiles exist
-        try:
-            genfiles_dir = core_dir_path / config['genfiles_dir']
-        except KeyError:
-            self.log_output.emit(
-                "<CONFIG> 'genfiles_dir' not found, skipping testbench generation config validation"
-            )
-            return True
-
-        # Check if VerifTools path is correct
-        try:
-            verif_tools_path = config["verif_tools_path"]
-            sys.path.insert(0, str(Path(core_dir_path) / verif_tools_path))
-            import pySVTBgenerator
-        except (ImportError, KeyError):
-            self.log_output.emit(
-                "<CONFIG> 'verif_tools_path' could not be validated")
             return False
-
-        for genfile in [
-                "monitor", "checker", "testcases", "assertions", "final_report"
-        ]:
-            try:
-                if not (genfiles_dir / config[genfile]).exists():
-                    self.log_output.emit(
-                        f"<CONFIG> '{genfile}' could not be found, please verify path"
-                    )
-                    return False
-            except KeyError:
-                self.log_output.emit(
-                    f"<CONFIG> '{genfile}' is not specified, please add it")
-                return False
-
-        # Test that include files exist
-        for include in config["includes"]:
-            if not (core_dir_path / include).exists():
-                self.log_output.emit(
-                    f"<CONFIG> file '{include}' does not exist, please check `includes`"
-                )
-                return False
 
         return True
 
-    def _open_config(self, config: ConfigType):
+    def _open_config(self, config: ConfigType, location: str):
         """Directly initialize configuration, manually assign members"""
-        self.core_dir_path = Path(config["core_dir"])
-        self.verif_tools_path = (self.core_dir_path /
-                                 config["verif_tools_path"]).resolve()
+        self.core_dir_path = Path(location).parent / config["core_dir"]
 
         self.rtl_dir_paths = {}
 
@@ -195,9 +156,9 @@ class Config(QtCore.QObject):
         if Path(location).exists():
             self.new_config_selected.emit(location)
             config = full_load(open(location))
-            if self.validate_config(config):
+            if self.validate_config(config, location):
                 self.config_path = location
-                self._open_config(config)
+                self._open_config(config, location)
             else:
                 QtWidgets.QMessageBox(
                     QtWidgets.QMessageBox.Critical,
@@ -205,7 +166,7 @@ class Config(QtCore.QObject):
                     "Please correct your configuration.").exec_()
         else:
             # Open a new config dialog or something
-            self.new_config_dialog.openDialog(location)
+            self.create_new_config.emit(location)
 
     def open_build(self, build: str):
         """Open an existing or a new build"""
@@ -231,60 +192,3 @@ class Config(QtCore.QObject):
         """Save build status to filesystem"""
         if self.build is not None:
             dump(self.status, open(str(self.build_status_path), "w"))
-
-
-class ConfigDialog(QtWidgets.QDialog):
-    """Dialog to create new configuration"""
-    def __init__(self):
-        super().__init__()
-        self.setModal(True)
-
-        self.layout = QtWidgets.QVBoxLayout(self)
-
-        self.config_location = QtWidgets.QLineEdit(self)
-        self.config_location.setReadOnly(True)
-        self.config_text = QtWidgets.QTextEdit(self)
-
-        self.button_box = QtWidgets.QDialogButtonBox(self)
-        self.button_box.addButton(self.button_box.Ok)
-        self.button_box.addButton(self.button_box.Cancel)
-        self.button_box.accepted.connect(self.saveConfig)
-        self.button_box.rejected.connect(self.reject)
-
-        self.layout.addWidget(self.config_location)
-        self.layout.addWidget(self.config_text)
-        self.layout.addWidget(self.button_box)
-
-    def openDialog(self, file_loc: str):
-        """Opens dialog to save file to specified location"""
-        self.config_location.setText(file_loc)
-        self.config_text.setText(self.configTemplate())
-        self.setMinimumSize(700, 500)
-        self.exec_()
-
-    def saveConfig(self):
-        """Saves filled-out configuration at file location"""
-        filename = self.config_location.text()
-        with open(filename, "w") as config:
-            config.write(self.config_text.toPlainText())
-        self.accept()
-
-    def configTemplate(self) -> str:
-        """Returns default config template"""
-        return """
-###############################################################################
-# Minimum required for parsing
-
-top_module:
-repo_name:
-# Base directory of core under test, should be relative to where you run gui.py
-core_dir:
-# working directory, relative to core_dir
-working_dir:
-# Directory containing rtl, relative to core_dir
-rtl_dirs:
-  - rtl:
-      recurse: false
-# Location of VerifTools repository, relative to core_dir
-verif_tools_path:
-"""
