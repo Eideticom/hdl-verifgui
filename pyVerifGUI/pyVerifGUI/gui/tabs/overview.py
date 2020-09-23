@@ -91,7 +91,7 @@ class OverviewTab(QtWidgets.QWidget):
 
         #### launch config editor
         self.config_dialog = ConfigEditorDialog(self)
-        self.open_config_editor = QtWidgets.QPushButton("Create Configuration", self)
+        self.open_config_editor = QtWidgets.QPushButton("Create/Edit Configuration", self)
         self.open_config_editor.clicked.connect(self._open_config_editor)
         self.config.create_new_config.connect(self.config_dialog.open)
         self.info_config_splitter.addWidget(self.open_config_editor)
@@ -103,10 +103,6 @@ class OverviewTab(QtWidgets.QWidget):
         self.config.buildChanged.connect(self.gitStatus)
 
         self.main_layout.addWidget(self.runner, 6, 0, 1, 2)
-
-    def new_config_selected(self):
-        self.config_selected = True
-        self.open_config_editor.setText("Edit Configuration")
 
     def _open_config_editor(self, clicked=False, path=None) -> bool:
         if not path:
