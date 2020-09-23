@@ -37,6 +37,8 @@ class ConfigEditor(QtWidgets.QWidget):
     def __init__(self, parent=None, config_path=None):
         super().__init__(parent)
 
+        self._core_dir_path = None
+
         self.layout = QtWidgets.QGridLayout(self)
 
         # core dir
@@ -95,11 +97,18 @@ class ConfigEditor(QtWidgets.QWidget):
                                         "./",
                                         "YAML Files (*.yaml)")
 
+        # Update config path for RTL
+        # XXX shouldn't be this direct, unsure how to re-work so constructor is called later on
+        self.rtl.config_path = Path(config_path)
         self.load_config(config_path)
 
     def browse_for_core_dir(self):
         """Browse for a directory"""
-        start_path = self.core_path.text() if self.core_path.text() != "" else "./"
+        if self.core_path.text():
+            start_path = self.core_path.text()
+        else:
+            start_path = str(self._core_dir_path)
+
         dialog = QtWidgets.QFileDialog.getExistingDirectory
         path = dialog(self, "Select Base Directory", start_path)
 
@@ -108,7 +117,7 @@ class ConfigEditor(QtWidgets.QWidget):
             path = os.path.relpath(path, self.config_path.parent)
             self.core_path.setText(path)
             self._core_dir_path = Path(path)
-            self.rtl.update({}, self._core_dir_path)
+            self.rtl.set_core_dir(self._core_dir_path)
 
     def browse_for_working_dir(self):
         """Opens a dialog to select the working directory"""
@@ -116,18 +125,16 @@ class ConfigEditor(QtWidgets.QWidget):
         if self._core_dir_path is None:
             return
 
-        if self.core_path.text() == "":
-            start_path = "./"
-        elif self.working_path.text() != "":
-            start_path = self.working_path.text()
+        if self.working_path.text() != "":
+            start_path = str(self.config_path.parent / self._core_dir_path / self.working_path.text())
         else:
-            start_path = self.core_path.text()
+            start_path = str(self.config_path.parent / self._core_dir_path)
 
         dialog = QtWidgets.QFileDialog.getExistingDirectory
         path = dialog(self, "Select Working Directory", start_path)
 
         if path:
-            path = os.path.relpath(path, str(self._core_dir_path))
+            path = os.path.relpath(path, str(self.config_path.parent / self._core_dir_path))
             self.working_path.setText(path)
 
     def load_config(self, path: str):
@@ -240,6 +247,10 @@ class RtlIncludes(QtWidgets.QWidget):
         self.config_path = config_path
         self.core_dir = None
 
+    def set_core_dir(self, core_dir):
+        """Required so new configs can appropriately select files based on correct core dir"""
+        self.core_dir = core_dir
+
     def update(self, rtl: dict, core_dir):
         """Updates the widgets to display"""
         self.core_dir = Path(core_dir)
@@ -268,7 +279,7 @@ class RtlIncludes(QtWidgets.QWidget):
 
     def _add_file(self, checked=False, file=""):
         """Adds a file to include"""
-        rtl_file = RtlFile(self, file, self.core_dir)
+        rtl_file = RtlFile(self, file, self.config_path.parent / self.core_dir)
         rtl_file.remove.connect(lambda: self.remove(rtl_file))
         rtl_file.file_text.setText(file)
         self.layout.replaceWidget(self.add_widget, rtl_file)
@@ -278,7 +289,7 @@ class RtlIncludes(QtWidgets.QWidget):
 
     def _add_folder(self, checked=False, folder="", recursive=False):
         """Adds a folder to include"""
-        rtl_folder = RtlDirectory(self, folder, False, self.core_dir)
+        rtl_folder = RtlDirectory(self, folder, False, self.config_path.parent / self.core_dir)
         rtl_folder.remove.connect(lambda: self.remove(rtl_folder))
         rtl_folder.recursive_sel.setChecked(recursive)
         rtl_folder.folder_text.setText(folder)
