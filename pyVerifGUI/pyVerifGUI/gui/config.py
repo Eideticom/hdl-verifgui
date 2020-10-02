@@ -182,6 +182,7 @@ class Config(QtCore.QObject):
             self.build_path.mkdir(parents=True)
             self.status = {}
             self.dump_build()
+            self.builds.append(build)
         else:
             self.status = full_load(open(str(self.build_status_path)))
 
