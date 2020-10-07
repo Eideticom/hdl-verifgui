@@ -100,6 +100,8 @@ class OverviewTab(QtWidgets.QWidget):
 
         self.main_layout.addWidget(self.info_config_splitter)
 
+        # Build/config status signals
+        self.config.new_config_selected.connect(self.config_has_been_selected)
         self.config.buildChanged.connect(self.gitStatus)
 
         self.main_layout.addWidget(self.runner, 6, 0, 1, 2)
@@ -111,6 +113,10 @@ class OverviewTab(QtWidgets.QWidget):
             path = self.config_location.text()
 
         return self.config_dialog.open(path)
+
+    def config_has_been_selected(self, _path: str):
+        """Updates config to clarify editing"""
+        self.config_selected = True
 
     def loadConfigInEditor(self, location: str):
         """Slot that loads the emitted config location into the editor"""

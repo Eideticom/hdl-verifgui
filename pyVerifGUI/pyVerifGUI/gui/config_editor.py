@@ -10,6 +10,10 @@ from yaml import full_load, dump
 from typing import List
 import os
 
+# TODO rework this widget so exception passing out of a constructor is not required.
+class ConfigNotSelected(Exception):
+    """Exception for passing errors up out of editor object"""
+
 class ConfigEditorDialog(QtWidgets.QDialog):
     """Dialog for editing config"""
     def __init__(self, parent):
@@ -25,7 +29,12 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         if self.layout.count():
             self.layout.removeWidget(self.editor)
             self.editor.deleteLater()
-        self.editor = ConfigEditor(self, config_path)
+
+        try:
+            self.editor = ConfigEditor(self, config_path)
+        except ConfigNotSelected:
+            return False
+
         self.editor.save.clicked.connect(self.accept)
         self.layout.addWidget(self.editor)
 
@@ -97,8 +106,12 @@ class ConfigEditor(QtWidgets.QWidget):
                                         "./",
                                         "YAML Files (*.yaml)")
 
+            if not config_path:
+                raise ConfigNotSelected()
+
         # Update config path for RTL
         # XXX shouldn't be this direct, unsure how to re-work so constructor is called later on
+        # TODO causes issue when path is not selected
         self.rtl.config_path = Path(config_path)
         self.load_config(config_path)
 
