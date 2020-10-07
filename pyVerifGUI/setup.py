@@ -17,8 +17,8 @@ setuptools.setup(
     url="https://github.com/Eideticom/pyVerifGUI",
     packages=setuptools.find_packages(),
     classifiers = [
-        "programming Language :: Python :: 3",
-        "License :: TBD",
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: Windows and Linux",
     ],
     python_requires='>=3.7',
@@ -28,4 +28,7 @@ setuptools.setup(
         ],
     },
     install_requires=install_requires,
+    package_data={
+        'pyVerifGUI': ['assets/help/*.md', 'assets/images/*']
+    }
 )

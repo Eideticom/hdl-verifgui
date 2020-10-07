@@ -3,8 +3,8 @@
 The only thing required to integrate a new project for linting and parsing
 is to create a configuration file.
 
-If you are confused about terminology, you can open [concepts.md](assets/help/),
-which is available through the help menu (Help->Show help documentation).
+If you are confused about terminology, you can open
+[concepts.md](help/concepts.md).
 
 ## Installation
 
@@ -17,7 +17,7 @@ As outlined in the main README, the following dependancies must be installed:
 ## Configuration
 
 A basic configuration file could look like this
-(found as [example.yaml](configs/example.yaml)):
+(found in `configs/example.yaml`):
 
 ```YAML
 #####
@@ -82,7 +82,7 @@ Linting is dependant on Verilator to provide error and warning messages.
 If there has been work done, you will need to select a build first, the
 selection box for which is right below the configuration selection.
 
-*Again, to save time on future openning, you can specify the build to load
+*Again, to save time on future opening, you can specify the build to load
 with the argument `-b <build_name>`.*
 
 Tasks can be reset within a build by clicking the `Reset <Task>` buttons,

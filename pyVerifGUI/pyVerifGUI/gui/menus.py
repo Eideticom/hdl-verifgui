@@ -162,7 +162,8 @@ class HelpMenu(QtWidgets.QMenu):
         self.help_dialog = QtWidgets.QDialog(self)
         self.help_layout = QtWidgets.QGridLayout(self.help_dialog)
         self.help_browser = QtWidgets.QTextBrowser(self.help_dialog)
-        self.help_browser.setSearchPaths(["./", "./assets"])
+        help_path = Path(__file__).parents[1] / "assets"
+        self.help_browser.setSearchPaths([str(help_path)])
         self.help_backward = QtWidgets.QPushButton("Backwards",
                                                    self.help_dialog)
         self.help_backward.setEnabled(False)
@@ -181,8 +182,7 @@ class HelpMenu(QtWidgets.QMenu):
 
     def displayHelp(self):
         """Displays help content"""
-        # TODO make this work when ran from outside the pyVerifGUI folder
-        self.help_browser.setSource(QtCore.QUrl("assets/help/main.md"))
+        self.help_browser.setSource(QtCore.QUrl("help/main.md"))
         self.help_browser.home()
         self.help_dialog.exec_()
 
