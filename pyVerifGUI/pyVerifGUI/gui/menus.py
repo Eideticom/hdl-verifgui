@@ -23,13 +23,8 @@ class FileMenu(QtWidgets.QMenu):
         self.commit_lint = QtWidgets.QAction("Commit Linter Waivers", self)
         self.commit_lint.triggered.connect(self.commitLint)
 
-        self.save_parsed = QtWidgets.QAction("Save parser outputs", self)
-        self.save_parsed.triggered.connect(self.saveParsed)
-
         self.addSection("Git")
         self.addAction(self.commit_lint)
-        self.addSection("Outputs")
-        self.addAction(self.save_parsed)
 
         self.commit_dialog = QtWidgets.QDialog()
         self.commit_layout = QtWidgets.QVBoxLayout(self.commit_dialog)
@@ -69,38 +64,6 @@ class FileMenu(QtWidgets.QMenu):
         sp.run(["git", "commit", "-o", filename, "-m", msg],
                check=True,
                cwd=cwd)
-
-    def saveParsed(self):
-        """Opens a dialog to save parsed files elsewhere"""
-        if self.config.build is not None and self.config.status[
-                task_names.parse]:
-            get_dir = QtWidgets.QFileDialog.getExistingDirectory
-            path = get_dir(self, "Select Directory to save Parsed Files")
-        else:
-            QtWidgets.QMessageBox.information(
-                self, "Select a Build",
-                "Please select a build with completed parsing.")
-            return
-
-        if path != "":
-            self.log_output.emit(
-                f"Saving parsed files from {self.config.build} to {path}")
-            parse_dir = f"sv_{self.config.top_module}"
-            prev_parse_path = self.config.build_path / parse_dir
-            new_parse_path = Path(path) / parse_dir
-            try:
-                shutil.copytree(str(prev_parse_path), str(new_parse_path))
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Copy Failed!", str(exc))
-
-            prev_list = self.config.build_path / "rtlfiles.lst"
-            new_list = Path(path) / "rtlfiles.lst"
-            try:
-                shutil.copyfile(prev_list, new_list)
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Copy Failed!", str(exc))
-
-            self.log_output.emit(f"Copied parse files to {path}")
 
 
 class ViewMenu(QtWidgets.QMenu):
