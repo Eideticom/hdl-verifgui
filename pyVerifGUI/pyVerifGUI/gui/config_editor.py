@@ -53,6 +53,7 @@ class ConfigEditor(QtWidgets.QWidget):
         # core dir
         self.core_label = QtWidgets.QLabel("Top level location", self)
         self.core_path = QtWidgets.QLineEdit(self)
+        self.core_path.setReadOnly(True)
         self.browse_core_path = QtWidgets.QPushButton("Browse", self)
         self.browse_core_path.clicked.connect(self.browse_for_core_dir)
         # working_dir
@@ -193,7 +194,7 @@ class ConfigEditor(QtWidgets.QWidget):
         if not self.top_module.text():
             issues.append("No top level module specified!")
 
-        issues.extend(self.rtl.validate(self._core_dir_path))
+        issues.extend(self.rtl.validate(base_path))
         return issues
 
     def validate_w_dialog(self):
@@ -323,7 +324,7 @@ class RtlIncludes(QtWidgets.QWidget):
             include = self.layout.itemAt(i).widget()
             try:
                 if include is not self.add_widget:
-                    if not (self.core_dir / include.include).exists():
+                    if not (_core_dir / include.include).exists():
                         errors.append(f"{include.include} does not exist!")
             except AttributeError:
                 errors.append("RTL file/folder not specified, delete or choose.")
@@ -344,13 +345,15 @@ class RtlFile(QtWidgets.QWidget):
         self.core_dir = core_dir
 
         self.layout = QtWidgets.QHBoxLayout(self)
+        self.label = QtWidgets.QLabel("File", self)
         self.file_text = QtWidgets.QLineEdit(self.include, self)
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.remove_button = QtWidgets.QPushButton(self)
         self.remove_button.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
 
+        self.layout.addWidget(self.label)
         self.layout.addWidget(self.file_text)
-        self.layout.setStretch(0, 1)
+        self.layout.setStretch(1, 1)
         self.layout.addWidget(self.browse_button)
         self.layout.addWidget(self.remove_button)
 
@@ -384,14 +387,16 @@ class RtlDirectory(QtWidgets.QWidget):
 
         # Widget init
         self.layout = QtWidgets.QHBoxLayout(self)
+        self.label = QtWidgets.QLabel("Folder", self)
         self.folder_text = QtWidgets.QLineEdit(self.include, self)
         self.recursive_sel = QtWidgets.QCheckBox("Recursive", self)
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.remove_button = QtWidgets.QPushButton(self)
         self.remove_button.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
 
+        self.layout.addWidget(self.label)
         self.layout.addWidget(self.folder_text)
-        self.layout.setStretch(0, 1)
+        self.layout.setStretch(1, 1)
         self.layout.addWidget(self.recursive_sel)
         self.layout.addWidget(self.browse_button)
         self.layout.addWidget(self.remove_button)
