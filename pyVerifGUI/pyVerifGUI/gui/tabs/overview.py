@@ -107,12 +107,17 @@ class OverviewTab(QtWidgets.QWidget):
         self.main_layout.addWidget(self.runner, 6, 0, 1, 2)
 
     def _open_config_editor(self, clicked=False, path=None) -> bool:
+        config_dialog = ConfigEditorDialog(self)
         if not path:
             if not self.config_selected:
-                return self.config_dialog.open()
+                rc = config_dialog.open()
+                config_dialog.deleteLater()
+                return rc
             path = self.config_location.text()
 
-        return self.config_dialog.open(path)
+        rc = config_dialog.open(path)
+        config_dialog.deleteLater()
+        return rc
 
     def config_has_been_selected(self, _path: str):
         """Updates config to clarify editing"""
