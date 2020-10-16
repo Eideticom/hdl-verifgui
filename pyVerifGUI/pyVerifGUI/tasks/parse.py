@@ -1,5 +1,12 @@
-__author__ = "David Lenfesty"
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
+###############################################################################
+## File: tasks/parse.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 
 from qtpy import QtCore, QtWidgets
 from yaml import full_load

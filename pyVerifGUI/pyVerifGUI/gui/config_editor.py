@@ -1,5 +1,12 @@
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
-__author__ = "David Lenfesty"
+###############################################################################
+## File: gui/config_editor.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 
 # TODO rewrite this whole thing
 

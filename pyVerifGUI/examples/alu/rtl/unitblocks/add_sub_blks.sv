@@ -1,3 +1,13 @@
+//-----------------------------------------------------------------------------
+// File: examples/alu/rtl/unitblocks/add_sub_blks.sv
+// Author: Danilo Ramos
+// Copyright (c) 2019. Eidetic Communications Inc.
+// All rights reserved.
+// Licensed under the BSD 3-Clause license.
+// This license message must appear in all versions of this code including
+// modified versions.
+//----------------------------------------------------------------------------
+
 module add
   #(
     parameter IN_WL = 15,  // Input Integer part word length

@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-"""
-GUI tool to manage verification
-"""
+
+###############################################################################
+## File: __main__.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
+"""GUI tool to manage verification"""
 
 __author__ = 'David Lenfesty'
 __copyright__ = 'Copyright (c) 2020. Eideticom Inc. All rights reserved.'
@@ -16,7 +24,7 @@ if sys.version_info < (3, 7):
 
 from qtpy import QtWidgets
 from qtpy.QtWidgets import QApplication, QMainWindow
-from pyVerifGUI.gui import Ui_MainWindow
+from pyVerifGUI.gui.application import Ui_MainWindow
 from pathlib import Path
 import argparse
 
