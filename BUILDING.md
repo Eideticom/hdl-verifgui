@@ -39,3 +39,29 @@ python setup.py install && VerifGUI
 correctly. This has been seen on Ubuntu and Fedora, where the packages can be
 installed with`python<version>-dev` and `python<version>-devel`,
 respectively.*
+
+## Documentation
+
+### pyVerifGUI (Doxygen)
+
+You need to install [Doxygen](https://www.doxygen.nl/index.html) and graphviz.
+
+On ubuntu, these are found with the `doxygen` and `graphviz` packages.
+
+Then:
+
+```
+cd pyVerifGUI
+doxygen Doxyfile
+```
+
+### rSVParser (cargo docs)
+
+Rust has default built-in documentation tools, so we use those.
+
+To build them:
+
+```
+cd rSVParser
+cargo docs
+```
