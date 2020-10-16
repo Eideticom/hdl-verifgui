@@ -48,6 +48,8 @@ pyVerifGUI must be installed either using `setup.py` or the wheel package.
 
 ```bash
 python setup.py install
+# Launch app
+VerifGUI
 ```
 
 A wheel file for pyVerifGUI will also be included in the downloadable.
