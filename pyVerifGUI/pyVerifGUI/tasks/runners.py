@@ -11,7 +11,7 @@ import random
 import tempfile
 import hashlib
 from pathlib import Path
-from oyaml import full_load, dump
+from yaml import full_load, dump
 from typing import Union, List
 
 from pyVerifGUI.gui.config import Config, ConfigError

@@ -2,7 +2,7 @@ __author__ = "David Lenfesty"
 __copyright__ = "Copyright (c) 2020 Eidetic Communications"
 
 from qtpy import QtCore, QtWidgets
-from oyaml import full_load
+from yaml import full_load
 from pathlib import Path
 import shutil
 

@@ -10,7 +10,7 @@ import sys
 import os
 import importlib
 from os import PathLike
-from oyaml import full_load, dump
+from yaml import full_load, dump
 from pathlib import Path
 from qtpy import QtCore, QtWidgets, QtGui
 import copy

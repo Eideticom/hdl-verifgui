@@ -4,7 +4,7 @@ __author__ = "David Lenfesty"
 __copyright__ = "Copyright (c) 2020 Eidetic Communications"
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import load, FullLoader, dump
+from yaml import load, FullLoader, dump
 import shutil
 from datetime import date
 

@@ -1,7 +1,7 @@
 """Base classes to reduce code amount for standard message views"""
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import load, FullLoader, dump, full_load
+from yaml import load, FullLoader, dump, full_load
 import shutil
 import copy
 from typing import Sequence

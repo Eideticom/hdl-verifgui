@@ -7,7 +7,7 @@ __author__ = "David Lenfesty"
 __copyright__ = "Copyright (c) 2020 Eidetic Communications"
 
 from qtpy import QtCore, QtWidgets
-from oyaml import dump
+from yaml import dump
 import subprocess as sp
 import pyparsing as pp
 from pathlib import Path

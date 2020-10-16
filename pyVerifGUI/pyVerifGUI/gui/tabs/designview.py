@@ -5,7 +5,7 @@ __author__ = "David Lenfesty"
 __copyright__ = "Copyright (c) 2020 Eidetic Communications"
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import full_load
+from yaml import full_load
 
 from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import ModuleTreeItem, ModuleTreeItemModel
