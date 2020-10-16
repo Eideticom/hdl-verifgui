@@ -1,4 +1,4 @@
-oyaml
+pyyaml
 pyparsing
 pathlib
 sympy
