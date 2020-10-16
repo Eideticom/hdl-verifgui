@@ -1,63 +1,58 @@
 # hdl-verifgui
 
-This project aims to provide a useful GUI for managing verification, coverage, or regression testing of synthesizable HDL. Currently only SystemVerilog and
-Verilog are supported (via Verilator and custom tooling), however we aim
-to provide enough modularity to support adding other HDLs.
+This project aims to provide a GUI (Python/Qt5) for managing verification, coverage, and regression testing of synthesizable HDL in Linux like OS *(Windows - WSL2, WIP)*.
 
-Included in this repository are two tools, `pyVerifGUI` and `rSVParser`.
-More specific information about these can be found in their respective
-READMEs.
+SystemVerilog is the default supported HDL (via Verilator and custom tooling). Nevertheless the project is structured to provide easy integration of other tools or languages like VHDL.
+
+Included in this repository are two tools, `pyVerifGUI` and `rSVParser`. More specific information about these can be found in their respective README files.
 
 ## Installation
 
-It is recommended you use a virtual environment to install all of the
-python dependencies, as it will ensure you are using the correct version
-of them.
+Install via python virtual environments (recommended)
 
-You will need the following dependancies, everything must be in your PATH:
+Dependencies: (located by the tools with PATH)
 
 - Python (>= 3.7)
-- Verilator
-- git
-- rSVParser (included in this repo)
+- Verilator ([veripool](https://www.veripool.org/projects/verilator/wiki/Installing)) - ensure Verilator is added to the user PATH
+- rSVParser, a rust [sv-parser](https://github.com/dalance/sv-parser) wrapper (included in this repo)
 
-### Verilator
+```bash
+cd ~/
+git clone https://github.com/Eideticom/hdl-verifgui.git
 
-Please visit [veripool](https://www.veripool.org/projects/verilator/wiki/Installing) for detailed installation instructions.
-
-Ensure verilator is in your PATH.
+```
 
 ### rSVParser
 
-rSVParser can be installed using cargo directly, (cargo can be obtained via
-[rustup.rs](https://rustup.rs)), or through the distributed python wheel package.
+***A rust [sv-parser](https://github.com/dalance/sv-parser) wrapper***
 
-To install from source, you must have cargo installed:
+Dependencies:
 
-```
+- rust/cargo ([rustup.rs](https://rustup.rs))
+
+rSVParser can be installed using cargo directly, or through the distributed python wheel package.
+
+```bash
 pip install maturin
 cd rSVParser
 maturin develop --path rSVParser # use 'maturin build' to generate a wheel
 ```
 
-On release, wheel files will also be included in the download, and can be
-installed via `pip`.
+Note: On release, wheel files will also be included in the download, and can be installed via `pip`.
 
 ### pyVerifGUI
 
 pyVerifGUI must be installed either using `setup.py` or the wheel package.
-Once a release is out, it will also be available on PyPI.
 
-```
+*Note: Once a release is out, it will also be available on [PyPI ](https://pypi.org/) or [Conda ](https://docs.conda.io/en/latest/)(TBD)*
+
+```bash
 python setup.py install
 ```
 
 A wheel file for pyVerifGUI will also be included in the downloadable.
 
-*Note that you may have to install the python development headers for pyside2
-to install correctly. This has been seen on Ubuntu and Fedora, where you can
-install the packages `python<version>-dev` and `python<version>-devel`,
-respectively.*
+*Note: python development headers for pyside2 maybe needed to install the app correctly. This has been seen on Ubuntu and Fedora, where the packages can be installed with`python<version>-dev` and `python<version>-devel`, respectively.*
 
 ## License
 
