@@ -142,6 +142,7 @@ class RunnerGUI(QtWidgets.QWidget):
         button.clicked.connect(partial(self.handleButtonPress, task))
 
     def handleButtonPress(self, task: Task):
+        """Handles pressing the "management" button. Starts, kills or resets the task"""
         if task.finished:
             task.reset()
         elif task.running:

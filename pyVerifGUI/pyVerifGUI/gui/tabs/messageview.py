@@ -256,6 +256,7 @@ class MessageViewTab(QtWidgets.QWidget):
             model.endResetModel()
 
     def showEditor(self):
+        """Switch extra display tabs to show editor to user."""
         self.extra_tabs.setCurrentWidget(self.editor_tab)
         self.extra_tabs.tabBar().setCurrentIndex(
             self.extra_tabs.currentIndex())
@@ -738,6 +739,7 @@ Waiving reason: {waiver['reason']}
         self.updateSummary()
 
     def updateSummary(self):
+        """Updates summary text with generated summary"""
         self.summary_text.setMarkdown(self.generateSummary())
 
     def generateSummary(self) -> str:
