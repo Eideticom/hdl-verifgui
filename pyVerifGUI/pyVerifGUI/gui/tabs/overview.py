@@ -45,6 +45,13 @@ class OverviewTab(QtWidgets.QWidget):
         self.config_layout = QtWidgets.QGridLayout(self.config_widget)
         self.config_layout.setObjectName("config_layout")
 
+        #### launch config editor
+        self.config_dialog = ConfigEditorDialog(self)
+        self.open_config_editor = QtWidgets.QPushButton("Create/Edit Configuration", self)
+        self.open_config_editor.clicked.connect(self._open_config_editor)
+        self.config.create_new_config.connect(self.config_dialog.open)
+        self.config_selected = False
+
         # File select for config
         self.config_label = QtWidgets.QLabel(self.config_widget)
         self.config_label.setText("Configuration")
@@ -60,6 +67,7 @@ class OverviewTab(QtWidgets.QWidget):
         self.config_layout.addWidget(self.config_location, 0, 1)
         self.config_layout.addWidget(self.config_browse, 0, 2)
         self.config_layout.addWidget(self.config_load, 0, 3)
+        self.config_layout.addWidget(self.open_config_editor, 0, 4)
 
         # Signals for config selection
         self.config_browse.clicked.connect(self.openBrowseDialog)
@@ -94,15 +102,7 @@ class OverviewTab(QtWidgets.QWidget):
         self.git_layout.addWidget(self.git_label)
         self.git_layout.addWidget(self.git_status)
         self.info_config_splitter.addWidget(self.git_widget)
-
-        #### launch config editor
-        self.config_dialog = ConfigEditorDialog(self)
-        self.open_config_editor = QtWidgets.QPushButton("Create/Edit Configuration", self)
-        self.open_config_editor.clicked.connect(self._open_config_editor)
-        self.config.create_new_config.connect(self.config_dialog.open)
-        self.info_config_splitter.addWidget(self.open_config_editor)
         self.info_config_splitter.setSizes([100, 100])
-        self.config_selected = False
 
         self.main_layout.addWidget(self.info_config_splitter)
 
