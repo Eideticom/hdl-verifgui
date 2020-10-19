@@ -84,28 +84,29 @@ class SVParseWorker(Worker):
         # Check if rSVParser exists first
         try:
             thing = sp.run(["rSVParser", "-h"], capture_output=True)
-            cmd_list = ["rSVParser"]
+            self.cmd_list = ["rSVParser"]
         except FileNotFoundError:
             return (
                 -1, "",
                 "rSVParser not found! Please ensure it is installed and in your PATH."
             )
 
-        cmd_list = ["rSVParser", config.top_module, "--top_module"]
+        self.cmd_list = ["rSVParser", config.top_module, "--top_module"]
         for path in config.rtl_dir_paths:
             if Path(path).suffix:
-                cmd_list.extend(["--file", str(path)])
+                self.cmd_list.extend(["--file", str(path)])
             else:
                 if config.rtl_dir_paths[path]["recurse"]:
-                    cmd_list.extend(["--include-recursive", str(path)])
+                    self.cmd_list.extend(["--include-recursive", str(path)])
                 else:
-                    cmd_list.extend(["--include", str(path)])
+                    self.cmd_list.extend(["--include", str(path)])
 
         parse_args = config.config.get("parse_args", None)
-        cmd_list.extend(get_extra_args(parse_args))
+        self.cmd_list.extend(get_extra_args(parse_args))
+        self.display_cmd()
 
         try:
-            self.popen = sp.Popen(cmd_list,
+            self.popen = sp.Popen(self.cmd_list,
                                   stdout=sp.PIPE,
                                   stderr=sp.PIPE,
                                   cwd=config.working_dir_path)
@@ -153,15 +154,16 @@ class LinterWorker(Worker):
         else:
             verilator_exe = "verilator"
 
-        cmd_list = [verilator_exe, "--lint-only", "-Wall", "--top-module",
-                   config.top_module, "-f", f"{config.build_path.resolve()}/rtlfiles.lst"]
+        self.cmd_list = [verilator_exe, "--lint-only", "-Wall", "--top-module",
+                         config.top_module, "-f", f"{config.build_path.resolve()}/rtlfiles.lst"]
 
         opts = config.config.get("verilator_args", None)
-        cmd_list.extend(get_extra_args(opts))
+        self.cmd_list.extend(get_extra_args(opts))
+        self.display_cmd()
 
         # can only be run after parsing has finished
         try:
-            self.popen = sp.Popen(cmd_list,
+            self.popen = sp.Popen(self.cmd_list,
                                   stdout=sp.PIPE,
                                   stderr=sp.PIPE,
                                   cwd=config.working_dir_path)

@@ -67,6 +67,16 @@ class Worker(QtCore.QRunnable):
         """Override this for the subclass implementation!"""
         raise NotImplementedError
 
+    # XXX it may make sense to move this to a seperate channel so it can
+    # be specially redirected.
+    def display_cmd(self):
+        """Prints correctly formatted list of commands to stdout.
+
+        Does nothing if self.cmd_list is not defined
+        """
+        if hasattr(self, 'cmd_list'):
+            self.signals.stdout.emit(self.tag, f"**** {' '.join(self.cmd_list)}")
+
     def emit_stdout(self, label: str):
         """Prints popen output to stdout signal"""
         out = ""
