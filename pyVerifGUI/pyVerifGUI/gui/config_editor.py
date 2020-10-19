@@ -1,11 +1,14 @@
 ###############################################################################
-## File: gui/config_editor.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/config_editor.py
+# @package pyVerifGUI.gui.config_editor
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Configuration editor dialog
 ##############################################################################
 
 # TODO rewrite this whole thing

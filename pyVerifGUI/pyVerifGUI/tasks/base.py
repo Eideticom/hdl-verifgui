@@ -1,11 +1,14 @@
 ###############################################################################
-## File: tasks/base.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/tasks/base.py
+# @package pyVerifGUI.tasks.base
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Base classes and utilities for creating a task
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets

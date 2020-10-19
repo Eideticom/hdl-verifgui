@@ -1,13 +1,15 @@
 ###############################################################################
-## File: gui/tabs/messageview.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/tabs/messageview.py
+# @package pyVerifGUI.gui.tabs.messageview
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Base class for a standardized message view tab
 ##############################################################################
-"""Base classes to reduce code amount for standard message views"""
 
 from qtpy import QtWidgets, QtCore, QtGui
 from yaml import load, FullLoader, dump, full_load

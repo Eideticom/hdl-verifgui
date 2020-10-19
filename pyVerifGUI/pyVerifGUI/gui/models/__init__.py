@@ -1,13 +1,15 @@
 ###############################################################################
-## File: gui/models/__init__.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/models/__init__.py
+# @package pyVerifGUI.gui.models
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Models and backend items for implementing models in view widgets
 ##############################################################################
-"""Various models and backend items for implementing the Models for MV controllers"""
 
 from typing import Sequence, Mapping, Union
 

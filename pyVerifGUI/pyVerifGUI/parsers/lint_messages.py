@@ -1,13 +1,15 @@
 ###############################################################################
-## File: parsers/lint_messages.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/parsers/lint_messages.py
+# @package pyVerifGUI.parsers.lint_messages
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Verilator message parsers (warnings and errors)
 ##############################################################################
-"""Functions to parse verilator linting messages"""
 
 import hashlib
 from typing import Sequence, List

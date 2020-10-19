@@ -1,13 +1,16 @@
 ###############################################################################
-## File: gui/tabs/lintview.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/tabs/lintview.py
+# @package pyVerifGUI.gui.tabs.lintview
+# @author David Lenfesty
+# @copyright    Copyright (c) 2020. Eidetic Communications Inc.
+#               All rights reserved
+#
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#            modified versions.
+#
+# @brief Class definitions to display linter view tab
 ##############################################################################
-"""Class definitions to display linter view tab"""
 
 from qtpy import QtWidgets, QtCore, QtGui
 from yaml import full_load, dump

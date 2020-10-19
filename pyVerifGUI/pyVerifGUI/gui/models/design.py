@@ -1,16 +1,15 @@
 ###############################################################################
-## File: gui/models/design.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/models/design.py
+# @package pyVerifGUI.gui.models.design
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Models used in the Design tab
 ##############################################################################
-"""Classes for representing the loaded design in QT
-
-Essentially required to implement the QTreeView
-"""
 
 # Required to use type annotations that describe the current type
 from __future__ import annotations

@@ -1,11 +1,14 @@
 ###############################################################################
-## File: gui/tabs/runnerwidget.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/tabs/runnerwidget.py
+# @package pyVerifGUI.gui.tabs.runnerwidget
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Sub-widget for overview than handles running tasks
 ##############################################################################
 from qtpy import QtCore, QtWidgets
 from pyVerifGUI.tasks import (Task, ParseTask, LintTask, ReportTask,

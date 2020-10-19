@@ -1,16 +1,15 @@
 ###############################################################################
-## File: gui/editor/editor.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/editor/editor.py
+# @package pyVerifGUI.gui.editor.editor
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Definitions for basic editor with varying types of tabs
 ##############################################################################
-"""Class definitions to implement a very basic editor
-
-Supports opening and saving multiple files, in tabs.
-"""
 
 from qtpy import QtWidgets, QtGui, QtCore
 import os

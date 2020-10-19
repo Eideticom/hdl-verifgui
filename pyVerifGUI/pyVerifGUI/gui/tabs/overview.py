@@ -1,16 +1,15 @@
 ###############################################################################
-## File: gui/tabs/overview.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/tabs/overview.py
+# @package pyVerifGUI.gui.tabs.overview
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Definition of the Overview tab. Frontend for running tasks
 ##############################################################################
-"""Class and function definitions required to display the Overview tab
-
-A portion of this is the frontend for running the various tasks.
-"""
 
 from qtpy import QtCore, QtWidgets
 from yaml import dump

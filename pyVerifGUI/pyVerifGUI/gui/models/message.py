@@ -1,13 +1,15 @@
 ###############################################################################
-## File: gui/models/message.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/models/message.py
+# @package pyVerifGUI.gui.models.message
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Base class for generic message types.
 ##############################################################################
-"""Generic class definitions to describe output messages for use in QTableViews"""
 
 from qtpy import QtCore, QtGui
 import os

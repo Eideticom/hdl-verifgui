@@ -1,13 +1,15 @@
 ###############################################################################
-## File: gui/tabs/designview.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/gui/tabs/designview.py
+# @package pyVerifGUI.gui.tabs.designview
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Definition of Design tab
 ##############################################################################
-"""Class definition to handle the Design tab"""
 
 from qtpy import QtWidgets, QtCore, QtGui
 from yaml import full_load

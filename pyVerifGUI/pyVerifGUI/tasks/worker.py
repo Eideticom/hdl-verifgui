@@ -1,13 +1,15 @@
 ###############################################################################
-## File: tasks/worker.py
-## Author: David Lenfesty
-## Copyright (c) 2020. Eidetic Communications Inc.
-## All rights reserved
-## Licensed under the BSD 3-Clause license.
-## This license message must appear in all versions of this code including
-## modified versions.
+# @file pyVerifGUI/tasks/worker.py
+# @package pyVerifGUI.tasks.worker
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Worker class to run tasks inside of a QThreadPool
 ##############################################################################
-"""Worker class which enables running tasks inside of a QThreadPool"""
 
 from qtpy import QtCore
 from timeit import default_timer as timer
