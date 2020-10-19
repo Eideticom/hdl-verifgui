@@ -20,7 +20,6 @@ from pathlib import Path
 import shutil
 import os
 
-from pyVerifGUI.parsers import parse_verilator_error
 from pyVerifGUI.gui.tabs.runnerwidget import RunnerGUI as NewRunnerGUI
 from pyVerifGUI.gui.editor import Editor
 from pyVerifGUI.gui.config_editor import ConfigEditorDialog

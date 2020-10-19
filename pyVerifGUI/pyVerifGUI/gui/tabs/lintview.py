@@ -10,7 +10,7 @@
 """Class definitions to display linter view tab"""
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import load, FullLoader, dump
+from yaml import full_load, dump
 import shutil
 from datetime import date
 
@@ -90,6 +90,27 @@ class LintViewTab(MessageViewTab):
         """Generates the summary text"""
         model = self.message_table.model()
         count = len(model.all_messages)
+
+        if not self.config.build:
+            return ""
+
+        # Load in any verilator errors
+        linter_errors_path = self.config.build_path.resolve() / "linter_errors.yaml"
+        if linter_errors_path.exists():
+            with open(str(linter_errors_path), "r") as f:
+                errors = full_load(f)
+        else:
+            errors = []
+
+        text = ""
+
+        # Conditionally print any verilator errors
+        if errors:
+            text += f"## Verilator errors:\n\n"
+            for err in errors:
+                text += f"- {err}\n"
+            text += "\n"
+
         if count > 0:
             waived_count = len(model.waived_messages)
             unwaived_count = len(model.unwaived_messages)
@@ -104,7 +125,7 @@ class LintViewTab(MessageViewTab):
                 for _ in f:
                     file_count += 1
 
-            text = f"## Total linting issues: {count}\n\n"
+            text += f"## Total linting issues: {count}\n\n"
             text += f"{round(waived_percent, 1)}% waived - {waived_count} / {count}\n\n"
             text += f"{round(unwaived_percent, 1)}% unwaived - {unwaived_count} / {count}\n\n"
             if waiver_diff > 1:
@@ -113,9 +134,7 @@ class LintViewTab(MessageViewTab):
                 text += "1 waiver that does not apply!\n\n"
             text += f"{file_count} files linted\n\n"
 
-            return text
-        else:
-            return ""
+        return text
 
 
 class AddWaiverDialog(QtWidgets.QDialog):

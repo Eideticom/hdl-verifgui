@@ -9,4 +9,4 @@
 ##############################################################################
 """Custom parsers for various testing outputs"""
 
-from .lint_messages import parse_verilator_output, parse_verilator_error
+from .lint_messages import parse_verilator_output

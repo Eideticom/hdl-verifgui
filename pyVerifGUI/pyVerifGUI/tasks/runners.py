@@ -176,12 +176,19 @@ class LinterWorker(Worker):
         message_text = stderr
 
         # Parse verilator output to build list of messages
-        messages = parse_verilator_output(message_text)
+        messages, errors = parse_verilator_output(message_text)
         if messages is None:
             return (-42, "", message_text)
 
         # Write messages to YAML storage file
         messages_path = config.build_path / "linter_messages.yaml"
         dump(messages, open(messages_path, "w"))
+
+        errors_path = config.build_path / "linter_errors.yaml"
+        if errors:
+            dump(errors, open(errors_path, "w"))
+        else:
+            if errors_path.exists():
+                os.remove(str(errors_path))
 
         return (returncode, stdout.decode(), stderr)

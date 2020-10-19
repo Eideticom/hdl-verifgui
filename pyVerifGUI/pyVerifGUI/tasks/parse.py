@@ -13,8 +13,6 @@ from yaml import full_load
 from pathlib import Path
 import shutil
 
-from pyVerifGUI.parsers import parse_verilator_error
-
 from .runners import SVParseWorker
 from .base import Task, TaskFinishedDialog, task_names, TaskFailedDialog
 from .lint import LintTask
