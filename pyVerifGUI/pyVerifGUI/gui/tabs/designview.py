@@ -1,11 +1,16 @@
-"""Class definition to handle the Design tab.
-"""
-
-__author__ = "David Lenfesty"
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
+###############################################################################
+## File: gui/tabs/designview.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
+"""Class definition to handle the Design tab"""
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import full_load
+from yaml import full_load
 
 from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import ModuleTreeItem, ModuleTreeItemModel

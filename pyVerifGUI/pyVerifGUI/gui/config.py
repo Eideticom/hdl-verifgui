@@ -1,16 +1,22 @@
+###############################################################################
+## File: gui/config.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 """Common configuration class
 
 This class is to be distributed to every sub-class
 """
 
-__author__ = "David Lenfesty"
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
-
 import sys
 import os
 import importlib
 from os import PathLike
-from oyaml import full_load, dump
+from yaml import full_load, dump
 from pathlib import Path
 from qtpy import QtCore, QtWidgets, QtGui
 import copy

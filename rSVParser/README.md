@@ -8,16 +8,9 @@ requires, and is not a generic systemverilog parser by any means.
 
 ## Installation
 
-First install the rust toolchain by following the instructions on
-(https::/rustup.rs):
-
-(You will likely have to add `~/.cargo/bin` to your path as well.)
-
-Then install!
-
-```
-cargo install --path ./
-```
+To install for general usage please use [maturin](https://pypi.org/project/maturin/).
+You can still use typical cargo commands, however it will not be present as a python
+dependancy if you do so.
 
 ## Usage
 

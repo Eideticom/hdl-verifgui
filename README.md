@@ -30,12 +30,13 @@ Dependencies:
 
 - rust/cargo ([rustup.rs](https://rustup.rs))
 
-rSVParser can be installed using cargo directly, or through the distributed python wheel package.
+rSVParser must be installed either with maturin directly or by using a provided wheel file
+in order to use it with pyVerifGUI.
 
 ```bash
 pip install maturin
 cd rSVParser
-maturin develop --path rSVParser # use 'maturin build' to generate a wheel
+maturin develop --release # use 'maturin build' to generate a wheel
 ```
 
 Note: On release, wheel files will also be included in the download, and can be installed via `pip`.

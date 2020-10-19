@@ -1,5 +1,12 @@
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
-__author__ = "David Lenfesty"
+###############################################################################
+## File: gui/config_editor.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 
 # TODO rewrite this whole thing
 
@@ -76,6 +83,10 @@ class ConfigEditor(QtWidgets.QWidget):
         self.parser_label = QtWidgets.QLabel("Extra parser arguments (optional)", self)
         self.parser_args = QtWidgets.QPlainTextEdit(self)
 
+        # Extra verilator lint arguments
+        self.verilator_label = QtWidgets.QLabel("Verilator linting arguments (optional)", self)
+        self.verilator_args = QtWidgets.QPlainTextEdit(self)
+
         # Buttons!
         self.validate_button = QtWidgets.QPushButton("Validate", self)
         self.validate_button.clicked.connect(self.validate_w_dialog)
@@ -97,8 +108,10 @@ class ConfigEditor(QtWidgets.QWidget):
         self.layout.addWidget(self.rtl, 8, 0)
         self.layout.addWidget(self.parser_label, 9, 0)
         self.layout.addWidget(self.parser_args, 10, 0)
-        self.layout.addWidget(self.validate_button, 11, 0, 1, 2)
-        self.layout.addWidget(self.save, 12, 0, 1, 2)
+        self.layout.addWidget(self.verilator_label, 11, 0)
+        self.layout.addWidget(self.verilator_args, 12, 0)
+        self.layout.addWidget(self.validate_button, 13, 0, 1, 2)
+        self.layout.addWidget(self.save, 14, 0, 1, 2)
 
         if config_path is None:
             dialog = QtWidgets.QFileDialog.getSaveFileName
@@ -177,6 +190,7 @@ class ConfigEditor(QtWidgets.QWidget):
             self.rtl.update(rtl_dirs, self._core_dir_path)
 
         self.parser_args.setPlainText(config.get("parse_args", ""))
+        self.verilator_args.setPlainText(config.get("verilator_args", ""))
 
     def validate(self) -> List[str]:
         """Validates that the input config settings are correct"""
@@ -221,6 +235,7 @@ class ConfigEditor(QtWidgets.QWidget):
             "repo_name": self.repo_name.text(),
             "rtl_dirs": self.rtl.dump(),
             "parse_args": self.parser_args.toPlainText(),
+            "verilator_args": self.verilator_args.toPlainText(),
         })
 
         dump(self.config, open(str(self.config_path), "w"))
@@ -282,12 +297,12 @@ class RtlIncludes(QtWidgets.QWidget):
         for i in range(self.layout.count()):
             include = self.layout.itemAt(i).widget()
             if include is not self.add_widget:
-                if include is RtlDirectory:
-                    recurse = include.recursive_sel.checked()
+                if type(include) is RtlDirectory:
+                    recurse = include.recursive_sel.isChecked()
                 else:
                     recurse = False
 
-                files.update({str(include.include): {"recurse": False}})
+                files.update({str(include.include): {"recurse": recurse}})
 
         return files
 

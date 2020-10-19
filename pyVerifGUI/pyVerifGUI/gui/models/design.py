@@ -1,12 +1,19 @@
-# Required to use type annotations that describe the current type
-from __future__ import annotations
+###############################################################################
+## File: gui/models/design.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 """Classes for representing the loaded design in QT
 
 Essentially required to implement the QTreeView
 """
 
-__author__ = "David Lenfesty"
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
+# Required to use type annotations that describe the current type
+from __future__ import annotations
 
 import qtpy
 from qtpy.QtCore import QAbstractItemModel, QModelIndex

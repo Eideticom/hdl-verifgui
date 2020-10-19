@@ -1,7 +1,16 @@
+###############################################################################
+## File: gui/tabs/messageview.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 """Base classes to reduce code amount for standard message views"""
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import load, FullLoader, dump, full_load
+from yaml import load, FullLoader, dump, full_load
 import shutil
 import copy
 from typing import Sequence

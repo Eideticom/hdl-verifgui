@@ -1,3 +1,13 @@
+//-----------------------------------------------------------------------------
+// File: examples/alu/rtl/dummy_test.sv
+// Author: Danilo Ramos
+// Copyright (c) 2019. Eidetic Communications Inc.
+// All rights reserved.
+// Licensed under the BSD 3-Clause license.
+// This license message must appear in all versions of this code including
+// modified versions.
+//----------------------------------------------------------------------------
+
 module dummy_test
   #(
     parameter IN_WL = 15,  // Input Integer part word length

@@ -1,13 +1,19 @@
+###############################################################################
+## File: gui/tabs/overview.py
+## Author: David Lenfesty
+## Copyright (c) 2020. Eidetic Communications Inc.
+## All rights reserved
+## Licensed under the BSD 3-Clause license.
+## This license message must appear in all versions of this code including
+## modified versions.
+##############################################################################
 """Class and function definitions required to display the Overview tab
 
 A portion of this is the frontend for running the various tasks.
 """
 
-__author__ = "David Lenfesty"
-__copyright__ = "Copyright (c) 2020 Eidetic Communications"
-
 from qtpy import QtCore, QtWidgets
-from oyaml import dump
+from yaml import dump
 import subprocess as sp
 import pyparsing as pp
 from pathlib import Path
