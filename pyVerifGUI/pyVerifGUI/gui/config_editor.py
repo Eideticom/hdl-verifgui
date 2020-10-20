@@ -16,7 +16,7 @@
 from qtpy import QtWidgets, QtCore, QtGui
 from pathlib import Path
 from functools import partialmethod
-from yaml import full_load, dump
+from yaml import safe_load, dump
 from typing import List
 import os
 
@@ -177,7 +177,7 @@ class ConfigEditor(QtWidgets.QWidget):
             dump({}, open(str(self.config_path), "w"))
 
         with open(str(self.config_path)) as fh:
-            config = full_load(fh.read())
+            config = safe_load(fh.read())
             self.config = config
 
 

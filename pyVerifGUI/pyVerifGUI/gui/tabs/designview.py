@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import full_load
+from yaml import safe_load
 
 from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import ModuleTreeItem, ModuleTreeItemModel
@@ -180,13 +180,13 @@ class DesignViewTab(QtWidgets.QWidget):
         """
         sv_parsed = f"sv_{self.config.top_module}"
         try:
-            self.sv_hierarchy = full_load(
+            self.sv_hierarchy = safe_load(
                 open(self.config.build_path / sv_parsed / "sv_hierarchy.yaml"))
-            self.sv_files = full_load(
+            self.sv_files = safe_load(
                 open(self.config.build_path / sv_parsed / "sv_files.yaml"))
-            self.sv_modules = full_load(
+            self.sv_modules = safe_load(
                 open(self.config.build_path / sv_parsed / "sv_modules.yaml"))
-            self.sv_interfaces = full_load(
+            self.sv_interfaces = safe_load(
                 open(self.config.build_path / sv_parsed /
                      "sv_interfaces.yaml"))
             return True

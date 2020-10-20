@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import load, FullLoader, dump, full_load
+from yaml import load, FullLoader, dump, safe_load
 import shutil
 import copy
 from typing import Sequence
@@ -662,23 +662,23 @@ Waiving reason: {waiver['reason']}
                 dump([], open(waivers_path, "w"))
 
         try:
-            messages = full_load(
+            messages = safe_load(
                 open(self.config.build_path / f"{prefix}_messages.yaml"))
-            waivers = full_load(open(waivers_path))
+            waivers = safe_load(open(waivers_path))
         except FileNotFoundError:
             self.log_output.emit("Unable to load messages.")
 
         diff_build_path = self.config.builds_path / self.diff_tab.diff_choose.currentText(
         )
-        diff_build_status = full_load(
+        diff_build_status = safe_load(
             open(diff_build_path / "build_status.yaml"))
 
         # Load diff builds conditionally
         diff_messages, diff_waivers = ([], [])
         if diff_build_status[self.status_name]:
-            diff_messages = full_load(
+            diff_messages = safe_load(
                 open(diff_build_path / f"{prefix}_messages.yaml"))
-            diff_waivers = full_load(
+            diff_waivers = safe_load(
                 open(diff_build_path / f"{prefix}_waivers.yaml"))
 
         return (messages, waivers, diff_messages, diff_waivers)

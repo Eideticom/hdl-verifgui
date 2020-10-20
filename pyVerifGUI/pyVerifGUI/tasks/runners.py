@@ -19,7 +19,7 @@ import random
 import tempfile
 import hashlib
 from pathlib import Path
-from yaml import full_load, dump
+from yaml import safe_load, dump
 from typing import Union, List
 
 from pyVerifGUI.gui.config import Config, ConfigError
@@ -125,12 +125,12 @@ class SVParseWorker(Worker):
         working_parse_path = config.build_path / f"sv_{config.top_module}"
 
         # Generate list of files for linter to use
-        modules = full_load(open(str(working_parse_path / "sv_modules.yaml")))
-        hierarchy = full_load(
+        modules = safe_load(open(str(working_parse_path / "sv_modules.yaml")))
+        hierarchy = safe_load(
             open(str(working_parse_path / "sv_hierarchy.yaml")))
-        packages = full_load(open(str(working_parse_path /
+        packages = safe_load(open(str(working_parse_path /
                                       "sv_packages.yaml")))
-        interfaces = full_load(
+        interfaces = safe_load(
             open(str(working_parse_path / "sv_interfaces.yaml")))
         sv_cfg = {
             "sv_modules": modules,

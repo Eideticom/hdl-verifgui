@@ -13,7 +13,7 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import full_load, dump
+from yaml import safe_load, dump
 import shutil
 from datetime import date
 
@@ -101,7 +101,7 @@ class LintViewTab(MessageViewTab):
         linter_errors_path = self.config.build_path.resolve() / "linter_errors.yaml"
         if linter_errors_path.exists():
             with open(str(linter_errors_path), "r") as f:
-                errors = full_load(f)
+                errors = safe_load(f)
         else:
             errors = []
 

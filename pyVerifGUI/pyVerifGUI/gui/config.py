@@ -19,7 +19,7 @@ import sys
 import os
 import importlib
 from os import PathLike
-from yaml import full_load, dump
+from yaml import safe_load, dump
 from pathlib import Path
 from qtpy import QtCore, QtWidgets, QtGui
 import copy
@@ -164,7 +164,7 @@ class Config(QtCore.QObject):
         """Generate config from file"""
         if Path(location).exists():
             self.new_config_selected.emit(location)
-            config = full_load(open(location))
+            config = safe_load(open(location))
             if self.validate_config(config, location):
                 self.config_path = location
                 self._open_config(config, location)
@@ -193,7 +193,7 @@ class Config(QtCore.QObject):
             self.dump_build()
             self.builds.append(build)
         else:
-            self.status = full_load(open(str(self.build_status_path)))
+            self.status = safe_load(open(str(self.build_status_path)))
 
         self.working_dir_path = self.build_path
         self.buildChanged.emit()

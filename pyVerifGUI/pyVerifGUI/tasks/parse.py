@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets
-from yaml import full_load
+from yaml import safe_load
 from pathlib import Path
 import shutil
 
@@ -163,7 +163,7 @@ class CopyOutputsDialog(QtWidgets.QDialog):
 
         # Find builds which have parsing enabled
         for build in self.config.builds:
-            config = full_load(
+            config = safe_load(
                 open(str(self.config.builds_path / build /
                          "build_status.yaml")))
             if config[task_names.parse]:
