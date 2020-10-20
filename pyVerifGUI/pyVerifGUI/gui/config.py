@@ -121,6 +121,7 @@ class Config(QtCore.QObject):
 
         Translates into final dictionary form
         """
+        # TODO take another look at how this needs to work
         if type(config["rtl_dirs"]) is list:
             # list of paths or list of dicts
             for rtl_dir in config["rtl_dirs"]:
@@ -133,13 +134,13 @@ class Config(QtCore.QObject):
 
                 path = (self.core_dir_path / path).resolve()
 
-                self.rtl_dir_paths.update({path: {"recurse": recurse}})
+                self.rtl_dir_paths.update({path: {}})
         else:
             for rtl_dir in config["rtl_dirs"]:
                 opts = config["rtl_dirs"][rtl_dir]
                 path = (self.core_dir_path / rtl_dir).resolve()
 
-                self.rtl_dir_paths.update({path: {"recurse": opts.get("recurse", True)}})
+                self.rtl_dir_paths.update({path: {}})
 
         self.top_module = config["top_module"]
         self.config = config

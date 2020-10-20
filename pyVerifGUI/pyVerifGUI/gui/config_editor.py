@@ -18,6 +18,7 @@ from pathlib import Path
 from functools import partialmethod
 from yaml import safe_load, dump
 from typing import List
+from glob import glob
 import os
 
 # TODO rework this widget so exception passing out of a constructor is not required.
@@ -335,17 +336,23 @@ class RtlIncludes(QtWidgets.QWidget):
         self.layout.removeWidget(include)
         include.deleteLater()
 
+    # TODO needs to ensure that at least one file is selected by glob
     def validate(self, _core_dir: Path) -> List[str]:
         """Validates all RTL files"""
         errors = []
         for i in range(self.layout.count()):
             include = self.layout.itemAt(i).widget()
-            try:
-                if include is not self.add_widget:
-                    if not (_core_dir / include.include).exists():
-                        errors.append(f"{include.include} does not exist!")
-            except AttributeError:
-                errors.append("RTL file/folder not specified, delete or choose.")
+            if include is not self.add_widget:
+                if include.include == "":
+                    errors.append("One or more files/folders does not have a selection")
+                    return errors
+
+                path = _core_dir / include.include
+                # Check that the file/folder exists
+                if not path.exists():
+                    # Check globs if we can't find a specific file
+                    if len(glob(str(path))) == 0:
+                        errors.append(f"{include.include} does not specify at least one file!")
 
         return errors
 
@@ -359,12 +366,11 @@ class RtlFile(QtWidgets.QWidget):
     def __init__(self, parent, file: str, core_dir):
         super().__init__(parent)
 
-        self.include = file
         self.core_dir = core_dir
 
         self.layout = QtWidgets.QHBoxLayout(self)
         self.label = QtWidgets.QLabel("File", self)
-        self.file_text = QtWidgets.QLineEdit(self.include, self)
+        self.file_text = QtWidgets.QLineEdit(file, self)
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.remove_button = QtWidgets.QPushButton(self)
         self.remove_button.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
@@ -386,8 +392,11 @@ class RtlFile(QtWidgets.QWidget):
 
         if file:
             file = os.path.relpath(file, str(self.core_dir))
-            self.include = file
             self.file_text.setText(file)
+
+    @property
+    def include(self):
+        return self.file_text.text()
 
 
 class RtlDirectory(QtWidgets.QWidget):
@@ -399,18 +408,20 @@ class RtlDirectory(QtWidgets.QWidget):
     def __init__(self, parent, folder: str, recursive: bool, core_dir):
         super().__init__(parent)
 
-        self.include = folder
         self.recursive = recursive
         self.core_dir = core_dir
 
         # Widget init
         self.layout = QtWidgets.QHBoxLayout(self)
         self.label = QtWidgets.QLabel("Folder", self)
-        self.folder_text = QtWidgets.QLineEdit(self.include, self)
+        self.folder_text = QtWidgets.QLineEdit(folder, self)
         self.recursive_sel = QtWidgets.QCheckBox("Recursive", self)
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.remove_button = QtWidgets.QPushButton(self)
         self.remove_button.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
+
+        if Path(folder).parts[-2:] == ("**", "*"):
+            self.recursive_sel.setChecked(True)
 
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.folder_text)
@@ -422,6 +433,22 @@ class RtlDirectory(QtWidgets.QWidget):
         self.browse_button.clicked.connect(self.browse)
         self.remove_button.clicked.connect(self.remove)
 
+        self.recursive_sel.clicked.connect(self.manage_recursive)
+
+    def manage_recursive(self, checked: bool):
+        """Slot that ensures glob string is set correctly for a recursive directory."""
+        path = Path(self.folder_text.text())
+        if checked:
+            # Add a recursive glob to the end of the string
+            if path.parts[-2:] != ("**", "*"):
+                path = path / "**" / "*"
+        else:
+            # Remove a recursive glob at the end of a string
+            if path.parts[-2:] == ("**", "*"):
+                path = path.parent.parent
+
+        self.folder_text.setText(str(path))
+
     def browse(self):
         """Browse to replace current folder"""
         dialog = QtWidgets.QFileDialog.getExistingDirectory
@@ -429,5 +456,8 @@ class RtlDirectory(QtWidgets.QWidget):
 
         if path:
             path = os.path.relpath(path, str(self.core_dir))
-            self.include = path
             self.folder_text.setText(path)
+
+    @property
+    def include(self):
+        return self.folder_text.text()
