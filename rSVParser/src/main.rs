@@ -32,6 +32,7 @@ use std::io::Read;
 use sv_parser::{parse_sv, unwrap_node, Locate, RefNode};
 use serde_yaml;
 use structopt::StructOpt;
+use glob::glob;
 
 mod out;
 mod modules;
@@ -47,7 +48,7 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 /// CLI Options
 #[derive(Debug, StructOpt)]
-#[structopt(name = "rSVParser", about = "Rust-based replacement for pySVParser.", version = VERSION)]
+#[structopt(name = "rSVParser", about = "Rust-based SystemVerilog parser utility.", version = VERSION)]
 struct Opt {
     /// Name of project (will be used in top level directory name)
     pub project_name: String,
@@ -61,12 +62,8 @@ struct Opt {
     pub top_module: bool,
 
     /// Includes the directory and all subdirectories in parsing
-    #[structopt(short = "-I", long = "--include-recursive")]
-    pub include_recursive: Vec<PathBuf>,
-
-    /// Includes only top-level files in directory
-    #[structopt(short = "-i", long = "--include")]
-    pub include: Vec<PathBuf>,
+    #[structopt(short = "-I", long = "--include")]
+    pub include: Vec<String>,
 
     /// Add a single file to parsing
     #[structopt(short, long)]
@@ -103,9 +100,7 @@ fn main() -> Result<(), std::io::Error> {
     }
     extensions.extend(opt.extensions);
 
-    let mut files = Vec::new();
-    glob_files(&opt.include, &extensions, false, &mut files)?;
-    glob_files(&opt.include_recursive, &extensions, true, &mut files)?;
+    let mut files = glob_files(&opt.include, &extensions)?;
     files.extend(opt.file);
 
     let mut sv_files = HashMap::new();
@@ -124,8 +119,7 @@ fn main() -> Result<(), std::io::Error> {
         sv_files.insert(String::from(filename),f);
 
         // Parse files
-        let defines = HashMap::new();
-        let result = parse_sv(&file, &defines, &opt.include, false);
+        let result = parse_sv(&file, &HashMap::new(), &opt.include, false);
 
         match result {
             Ok((syntax_tree, _)) => {
@@ -196,51 +190,78 @@ fn main() -> Result<(), std::io::Error> {
 
 /// Produces a list of all SystemVerilog and Verilog files in the included paths.
 ///
-/// XXX Potential issue here with infinite loops in the case of a symlink.
-fn glob_files(includes: &Vec<PathBuf>, extensions: &Vec<String>, recursive: bool, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    for dir in includes {
-        // small price to pay for a single function
-        let mut dirs = Vec::new();
+/// Will fail on invalid glob patterns, as well as failure to recurse into directories.
+/// Will not fail if it can't read files.
+fn glob_files(includes: &Vec<String>, extensions: &Vec<String>) -> std::io::Result<Vec<PathBuf>> {
+    use std::io::{Error, ErrorKind};
+    let mut files = Vec::new();
 
-        // View every file in a dir
-        let dir_iter = match read_dir(dir) {
-            Ok(dir_iter) => dir_iter,
-            Err(e) => {
-                eprintln!("Could not open directory {}: {}", dir.to_str().unwrap(), e);
-                return Err(e);
-            },
-        };
-        for file in dir_iter {
-            let file = file.unwrap();
+    for inc in includes {
 
-            // Either skip directories or recurse through them
-            if file.file_type().unwrap().is_dir() {
-                if recursive {
-                    dirs.push(file.path());
-                    continue;
-                } else {
-                    continue;
-                }
+        // If we are flatly given a directly, simply read all top-level files in it
+        let inc_path = PathBuf::from(inc);
+        if inc_path.is_dir() {
+            let dir_iter = match read_dir(&inc_path) {
+                Ok(dir_iter) => dir_iter,
+                Err(e) => {
+                    eprintln!("Could not open directory {:?}: {}", inc_path, e);
+                    return Err(e);
+                },
+            };
+
+            for dir in dir_iter {
+                match dir {
+                    Ok(entry) => {
+                        let entry = entry.path();
+                        if check_file_extension(&entry, extensions) {
+                            files.push(entry);
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Error iterating over directories {:?}", e);
+                    },
+                };
             }
-
-            // If file has a specified extension, use it.
-            if let Some(ext) = file.path().extension() {
-                let ext = String::from(ext.to_str().unwrap());
-                if extensions.contains(&ext) {
-                    files.push(file.path())
-                }
-            } else {
-                continue;
-            }
+            continue;
         }
 
-        // Handle recursion
-        if recursive {
-            glob_files(&dirs, extensions, recursive, files)?;
+        // Glob include string
+        let entries = match glob(inc) {
+            Ok(paths) => paths,
+            Err(e) => {
+                eprintln!("Invalid include pattern: {:?}", e);
+                return Result::Err(Error::new(ErrorKind::InvalidInput, format!("Invalid glob pattern {}", inc)));
+            }
+        };
+
+        for entry in entries {
+            match entry {
+                Ok(path) => {
+                    if check_file_extension(&path, extensions) {
+                        files.push(path);
+                    }
+                },
+                Err(e) => eprintln!("{:?}", e),
+            };
         }
     }
 
-    return Result::Ok(());
+    return Result::Ok(files);
+}
+
+fn check_file_extension(file: &PathBuf, extensions: &Vec<String>) -> bool {
+    if file.is_dir() {
+        return false;
+    }
+
+    if let Some(ext) = file.extension() {
+        let ext = String::from(ext.to_str().unwrap());
+        if extensions.contains(&ext) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /// Pulls identifier value from any node.
