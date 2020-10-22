@@ -289,43 +289,34 @@ class RtlIncludes(QtWidgets.QWidget):
         self.core_dir = Path(core_dir)
 
         for path in rtl.keys():
-            if Path(path).suffix:
-                self._add_file(file=path)
-            else:
-                self._add_folder(folder=path, recursive=rtl[path]["recurse"])
+            self._add_file(file=path)
 
     def dump(self):
         """Dump settings as a dictionary"""
-        files = {}
+        files = []
 
         for i in range(self.layout.count()):
             include = self.layout.itemAt(i).widget()
             if include is not self.add_widget:
-                if type(include) is RtlDirectory:
-                    recurse = include.recursive_sel.isChecked()
-                else:
-                    recurse = False
-
-                files.update({str(include.include): {"recurse": recurse}})
+                files.append(str(include.include))
 
         return files
 
     def _add_file(self, checked=False, file=""):
         """Adds a file to include"""
-        rtl_file = RtlFile(self, file, self.config_path.parent / self.core_dir)
+        rtl_file = RtlPath(self, file, self.config_path.parent / self.core_dir)
         rtl_file.remove.connect(lambda: self.remove(rtl_file))
-        rtl_file.file_text.setText(file)
+        rtl_file.path_text.setText(file)
         self.layout.replaceWidget(self.add_widget, rtl_file)
         self.layout.addWidget(self.add_widget)
         if not file:
             rtl_file.browse()
 
-    def _add_folder(self, checked=False, folder="", recursive=False):
+    def _add_folder(self, checked=False, folder=""):
         """Adds a folder to include"""
-        rtl_folder = RtlDirectory(self, folder, False, self.config_path.parent / self.core_dir)
+        rtl_folder = RtlPath(self, folder, self.config_path.parent / self.core_dir)
         rtl_folder.remove.connect(lambda: self.remove(rtl_folder))
-        rtl_folder.recursive_sel.setChecked(recursive)
-        rtl_folder.folder_text.setText(folder)
+        rtl_folder.path_text.setText(folder)
         self.layout.replaceWidget(self.add_widget, rtl_folder)
         self.layout.addWidget(self.add_widget)
         if not folder:
@@ -357,64 +348,21 @@ class RtlIncludes(QtWidgets.QWidget):
         return errors
 
 
-class RtlFile(QtWidgets.QWidget):
-    """Widget that represents a single RTL file to be included"""
+class RtlPath(QtWidgets.QWidget):
+    """Widget that represents an RTL path to be included"""
 
     # Signals up that this folder should be removed
     remove = QtCore.Signal()
 
-    def __init__(self, parent, file: str, core_dir):
+    def __init__(self, parent, folder: str, core_dir):
         super().__init__(parent)
 
-        self.core_dir = core_dir
-
-        self.layout = QtWidgets.QHBoxLayout(self)
-        self.label = QtWidgets.QLabel("File", self)
-        self.file_text = QtWidgets.QLineEdit(file, self)
-        self.browse_button = QtWidgets.QPushButton("Browse", self)
-        self.remove_button = QtWidgets.QPushButton(self)
-        self.remove_button.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
-
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.file_text)
-        self.layout.setStretch(1, 1)
-        self.layout.addWidget(self.browse_button)
-        self.layout.addWidget(self.remove_button)
-
-        self.browse_button.clicked.connect(self.browse)
-        self.remove_button.clicked.connect(self.remove)
-
-    def browse(self):
-        """Browse for a new file"""
-        dialog = QtWidgets.QFileDialog.getOpenFileName
-        file, _filter = dialog(self, "Choose RTL File", self.file_text.text(),\
-                               "SystemVerilog, Verilog (*.sv *.v)")
-
-        if file:
-            file = os.path.relpath(file, str(self.core_dir))
-            self.file_text.setText(file)
-
-    @property
-    def include(self):
-        return self.file_text.text()
-
-
-class RtlDirectory(QtWidgets.QWidget):
-    """Widget that represents an RTL folder to be included"""
-
-    # Signals up that this folder should be removed
-    remove = QtCore.Signal()
-
-    def __init__(self, parent, folder: str, recursive: bool, core_dir):
-        super().__init__(parent)
-
-        self.recursive = recursive
         self.core_dir = core_dir
 
         # Widget init
         self.layout = QtWidgets.QHBoxLayout(self)
         self.label = QtWidgets.QLabel("Folder", self)
-        self.folder_text = QtWidgets.QLineEdit(folder, self)
+        self.path_text = QtWidgets.QLineEdit(folder, self)
         self.recursive_sel = QtWidgets.QCheckBox("Recursive", self)
         self.browse_button = QtWidgets.QPushButton("Browse", self)
         self.remove_button = QtWidgets.QPushButton(self)
@@ -424,7 +372,7 @@ class RtlDirectory(QtWidgets.QWidget):
             self.recursive_sel.setChecked(True)
 
         self.layout.addWidget(self.label)
-        self.layout.addWidget(self.folder_text)
+        self.layout.addWidget(self.path_text)
         self.layout.setStretch(1, 1)
         self.layout.addWidget(self.recursive_sel)
         self.layout.addWidget(self.browse_button)
@@ -437,7 +385,7 @@ class RtlDirectory(QtWidgets.QWidget):
 
     def manage_recursive(self, checked: bool):
         """Slot that ensures glob string is set correctly for a recursive directory."""
-        path = Path(self.folder_text.text())
+        path = Path(self.path_text.text())
         if checked:
             # Add a recursive glob to the end of the string
             if path.parts[-2:] != ("**", "*"):
@@ -447,17 +395,17 @@ class RtlDirectory(QtWidgets.QWidget):
             if path.parts[-2:] == ("**", "*"):
                 path = path.parent.parent
 
-        self.folder_text.setText(str(path))
+        self.path_text.setText(str(path))
 
     def browse(self):
         """Browse to replace current folder"""
         dialog = QtWidgets.QFileDialog.getExistingDirectory
-        path = dialog(self, "Choose RTL Include Directory", self.folder_text.text())
+        path = dialog(self, "Choose RTL Include Directory", self.path_text.text())
 
         if path:
             path = os.path.relpath(path, str(self.core_dir))
-            self.folder_text.setText(path)
+            self.path_text.setText(path)
 
     @property
     def include(self):
-        return self.folder_text.text()
+        return self.path_text.text()

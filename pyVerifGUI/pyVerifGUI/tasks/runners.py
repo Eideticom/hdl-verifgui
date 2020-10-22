@@ -95,10 +95,7 @@ class SVParseWorker(Worker):
 
         self.cmd_list = ["rSVParser", config.top_module, "--top_module"]
         for path in config.rtl_dir_paths:
-            if Path(path).is_file():
-                self.cmd_list.extend(["--file", str(path)])
-            else:
-                self.cmd_list.extend(["--include", str(path)])
+            self.cmd_list.extend(["--include", str(path)])
 
         parse_args = config.config.get("parse_args", None)
         self.cmd_list.extend(get_extra_args(parse_args))
