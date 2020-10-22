@@ -63,11 +63,15 @@ struct Opt {
 
     /// Includes the directory and all subdirectories in parsing
     #[structopt(short = "-I", long = "--include")]
-    pub include: Vec<String>,
+    pub includes: Vec<String>,
 
-    /// Add a single file to parsing
-    #[structopt(short, long)]
-    pub file: Vec<PathBuf>,
+    /// Include directories to pass only to parser preprocessor
+    #[structopt(long)]
+    pub pp_includes: Vec<PathBuf>,
+
+    /// Only pass manually specified include directories (with --pp-includes) to parser preprocessor
+    #[structopt(long)]
+    pub manual_pp_includes: bool,
 
     /// Skip parsing files with "sv" extensions
     #[structopt(long)]
@@ -100,15 +104,15 @@ fn main() -> Result<(), std::io::Error> {
     }
     extensions.extend(opt.extensions);
 
-    let mut files = glob_files(&opt.include, &extensions)?;
-    files.extend(opt.file);
+    let mut globs = glob_files(&opt.includes, &extensions, !opt.manual_pp_includes)?;
+    globs.includes.extend(opt.pp_includes);
 
     let mut sv_files = HashMap::new();
     let mut sv_modules = HashMap::new();
     let mut sv_interfaces = HashMap::new();
     let mut sv_packages = HashMap::new();
     let mut error = false;
-    for file in &files {
+    for file in &globs.files {
         // Build up sv_files
         // XXX I'm sure there's a cleaner way to do this
         let path = String::from(file.to_str().unwrap());
@@ -119,7 +123,7 @@ fn main() -> Result<(), std::io::Error> {
         sv_files.insert(String::from(filename),f);
 
         // Parse files
-        let result = parse_sv(&file, &HashMap::new(), &opt.include, false);
+        let result = parse_sv(&file, &HashMap::new(), &globs.includes, false);
 
         match result {
             Ok((syntax_tree, _)) => {
@@ -188,44 +192,47 @@ fn main() -> Result<(), std::io::Error> {
     return Ok(());
 }
 
+/// Results from globbing include files
+struct GlobResults {
+    /// List of files to parse
+    files: Vec<PathBuf>,
+    /// Include directories to pass to parser/preprocessor
+    includes: Vec<PathBuf>,
+}
+
 /// Produces a list of all SystemVerilog and Verilog files in the included paths.
+///
+/// `add_includes` if true, will add all folders that files live in to the preprocessor includes
 ///
 /// Will fail on invalid glob patterns, as well as failure to recurse into directories.
 /// Will not fail if it can't read files.
-fn glob_files(includes: &Vec<String>, extensions: &Vec<String>) -> std::io::Result<Vec<PathBuf>> {
+fn glob_files(patterns: &Vec<String>, extensions: &Vec<String>, add_includes: bool) -> std::io::Result<GlobResults> {
     use std::io::{Error, ErrorKind};
     let mut files = Vec::new();
+    let mut includes = Vec::new();
 
-    for inc in includes {
-
-        // If we are flatly given a directly, simply read all top-level files in it
+    for inc in patterns {
         let inc_path = PathBuf::from(inc);
-        if inc_path.is_dir() {
-            let dir_iter = match read_dir(&inc_path) {
-                Ok(dir_iter) => dir_iter,
-                Err(e) => {
-                    eprintln!("Could not open directory {:?}: {}", inc_path, e);
-                    return Err(e);
-                },
-            };
 
-            for dir in dir_iter {
-                match dir {
-                    Ok(entry) => {
-                        let entry = entry.path();
-                        if check_file_extension(&entry, extensions) {
-                            files.push(entry);
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Error iterating over directories {:?}", e);
-                    },
-                };
+        // If we are given a file, add it to the list of files.
+        if inc_path.is_file() {
+            if check_file_extension(&inc_path, extensions) {
+                add_parent(&inc_path, add_includes, &mut includes);
+                files.push(inc_path);
             }
             continue;
         }
 
-        // Glob include string
+        // If we are flatly given a directly, simply read all top-level files in it
+        if inc_path.is_dir() {
+            add_directory(&inc_path, extensions, &mut files)?;
+            if add_includes {
+                includes.push(inc_path);
+            }
+            continue;
+        }
+
+        // Attempt to glob string
         let entries = match glob(inc) {
             Ok(paths) => paths,
             Err(e) => {
@@ -237,8 +244,11 @@ fn glob_files(includes: &Vec<String>, extensions: &Vec<String>) -> std::io::Resu
         for entry in entries {
             match entry {
                 Ok(path) => {
-                    if check_file_extension(&path, extensions) {
+                    if path.is_file() && check_file_extension(&path, extensions) {
+                        add_parent(&path, add_includes, &mut includes);
                         files.push(path);
+                    } else if path.is_dir() {
+                        add_directory(&path, extensions, &mut files)?;
                     }
                 },
                 Err(e) => eprintln!("{:?}", e),
@@ -246,14 +256,53 @@ fn glob_files(includes: &Vec<String>, extensions: &Vec<String>) -> std::io::Resu
         }
     }
 
-    return Result::Ok(files);
+    return Result::Ok(GlobResults {
+        files: files,
+        includes: includes,
+    });
 }
 
-fn check_file_extension(file: &PathBuf, extensions: &Vec<String>) -> bool {
-    if file.is_dir() {
-        return false;
+/// Add all files underneath a directory to the list of files
+fn add_directory(path: &PathBuf, extensions: &Vec<String>, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    let dir_iter = match read_dir(path) {
+        Ok(dir_iter) => dir_iter,
+        Err(e) => {
+            eprintln!("Could not open directory {:?}: {}", path, e);
+            return Err(e);
+        },
+    };
+
+    for dir in dir_iter {
+        match dir {
+            Ok(entry) => {
+                let entry = entry.path();
+                if entry.is_dir() && check_file_extension(&entry, extensions) {
+                    files.push(entry);
+                }
+            },
+            Err(e) => {
+                eprintln!("Error iterating over directories {:?}", e);
+            },
+        };
     }
 
+    Ok(())
+}
+
+/// Add the parent of a file to the list of preprocessor includes
+fn add_parent(file: &PathBuf, add_includes: bool, includes: &mut Vec<PathBuf>) {
+    if !add_includes {
+        return;
+    }
+
+    let parent = PathBuf::from(file.parent().unwrap());
+    if !includes.contains(&parent) {
+        includes.push(parent);
+    }
+}
+
+/// Checks that the file extension of the given file is in the list of allowed extensions
+fn check_file_extension(file: &PathBuf, extensions: &Vec<String>) -> bool {
     if let Some(ext) = file.extension() {
         let ext = String::from(ext.to_str().unwrap());
         if extensions.contains(&ext) {
