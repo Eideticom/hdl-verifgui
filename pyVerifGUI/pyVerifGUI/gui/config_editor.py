@@ -34,7 +34,10 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         self.editor = None
 
     def open(self, config_path = None) -> bool:
-        """Opens dialog for editing config"""
+        """Opens dialog for editing config
+
+        Returns one when dialog succeeds
+        """
         # XXX Would be better to add in proper signalling to change path
         # rather than just rebuilding.
         if self.layout.count():

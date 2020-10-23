@@ -122,6 +122,10 @@ class OverviewTab(QtWidgets.QWidget):
 
         rc = config_dialog.open(path)
         config_dialog.deleteLater()
+
+        if self.config.config_path == path and rc:
+            self.config.reload_config()
+
         return rc
 
     def config_has_been_selected(self, _path: str):

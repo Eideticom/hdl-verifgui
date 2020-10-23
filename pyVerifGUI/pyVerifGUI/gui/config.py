@@ -77,6 +77,14 @@ class Config(QtCore.QObject):
         self.new_build = False
         self.is_valid = False
 
+    def reload_config(self):
+        """Reloads configuration and build, e.g. after an edit"""
+        build = self.build
+
+        self.open_config(self.config_path)
+
+        self.open_build(build)
+
     def __getitem__(self, item):
         """I don't like typing self.config.config everywhere so "directly" access the config dictionary"""
         return self.config[item]
@@ -156,6 +164,7 @@ class Config(QtCore.QObject):
                     "Please correct your configuration.").exec_()
         else:
             # Open a new config dialog or something
+            self.config_path = location
             self.create_new_config.emit(location)
 
     def open_build(self, build: str):
