@@ -42,6 +42,9 @@ mod hierarchy;
 mod ports;
 mod includes;
 
+#[cfg(test)]
+mod tests;
+
 //use out::Port;
 
 /// Static version string for CLI

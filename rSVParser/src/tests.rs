@@ -4,7 +4,7 @@ use super::includes::glob_files;
 
 mod common {
     pub fn full_recursion() -> Vec<String> {
-        vec![String::from("example/rtl/**/*")]
+        vec![String::from("example/rtl/**")]
     }
 
     pub fn extensions(v: bool, sv: bool) -> Vec<String> {
@@ -27,6 +27,20 @@ fn local_recursion() {
     assert!(results.files.contains(&PathBuf::from("example/rtl/adder.sv")));
     assert!(results.files.contains(&PathBuf::from("example/rtl/alu.sv")));
     assert!(results.files.contains(&PathBuf::from("example/rtl/dummy_test.sv")));
+}
+
+#[test]
+fn full_recursion() {
+    let patterns = common::full_recursion();
+    let extensions = common::extensions(false, true);
+    let results = glob_files(&patterns, &extensions, false).unwrap();
+
+    assert!(results.files.contains(&PathBuf::from("example/rtl/unitblocks/add_sub_blks.sv")));
+    assert!(results.files.contains(&PathBuf::from("example/rtl/unitblocks/add.sv")));
+    assert!(results.files.contains(&PathBuf::from("example/rtl/unitblocks/adder.sv")));
+    assert!(results.files.contains(&PathBuf::from("example/rtl/unitblocks/div.sv")));
+    assert!(results.files.contains(&PathBuf::from("example/rtl/unitblocks/mult.sv")));
+    assert!(results.files.contains(&PathBuf::from("example/rtl/unitblocks/sub.sv")));
 }
 
 #[test]

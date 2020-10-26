@@ -23,6 +23,22 @@ pub fn glob_files(patterns: &Vec<String>, extensions: &Vec<String>, add_includes
     let mut includes = Vec::new();
 
     for inc in patterns {
+
+        // If we are doing full recursion, include the local directory.
+        // This is required because glob doesn't follow the same semantics as
+        // e.g. bash. It doesn't include the top-level directory in the list of directories
+        let path = PathBuf::from(inc);
+        match path.file_name() {
+            Some(name) => {
+                if name == "**" {
+                    let path = PathBuf::from(path.parent().unwrap());
+                    add_directory(&path, extensions, add_includes,
+                                  &mut files, &mut includes)?;
+                }
+            }
+            None => (),
+        };
+
         // Attempt to glob string
         let entries = match glob(inc) {
             Ok(paths) => paths,
@@ -39,7 +55,8 @@ pub fn glob_files(patterns: &Vec<String>, extensions: &Vec<String>, add_includes
                         add_parent(&path, add_includes, &mut includes);
                         files.push(path);
                     } else if path.is_dir() {
-                        add_directory(&path, extensions, &mut files)?;
+                        add_directory(&path, extensions, add_includes,
+                                      &mut files, &mut includes)?;
                     }
                 },
                 Err(e) => eprintln!("{:?}", e),
@@ -54,7 +71,8 @@ pub fn glob_files(patterns: &Vec<String>, extensions: &Vec<String>, add_includes
 }
 
 /// Add all files underneath a directory to the list of files
-fn add_directory(path: &PathBuf, extensions: &Vec<String>, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+fn add_directory(path: &PathBuf, extensions: &Vec<String>, add_includes: bool,
+                 files: &mut Vec<PathBuf>, includes: &mut Vec<PathBuf>) -> std::io::Result<()> {
     let dir_iter = match read_dir(path) {
         Ok(dir_iter) => dir_iter,
         Err(e) => {
@@ -63,11 +81,13 @@ fn add_directory(path: &PathBuf, extensions: &Vec<String>, files: &mut Vec<PathB
         },
     };
 
+    let mut files_included = false;
     for dir in dir_iter {
         match dir {
             Ok(entry) => {
                 let entry = entry.path();
                 if entry.is_file() && check_file_extension(&entry, extensions) {
+                    files_included = true;
                     files.push(entry);
                 }
             },
@@ -75,6 +95,10 @@ fn add_directory(path: &PathBuf, extensions: &Vec<String>, files: &mut Vec<PathB
                 eprintln!("Error iterating over directories {:?}", e);
             },
         };
+    }
+
+    if files_included && add_includes {
+        includes.push(path.clone());
     }
 
     Ok(())
