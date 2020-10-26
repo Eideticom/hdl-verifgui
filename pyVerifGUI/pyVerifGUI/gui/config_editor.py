@@ -370,7 +370,7 @@ class RtlPath(QtWidgets.QWidget):
         self.remove_button = QtWidgets.QPushButton(self)
         self.remove_button.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DialogCloseButton))
 
-        if Path(folder).parts[-2:] == ("**", "*"):
+        if Path(folder).name == "**":
             self.recursive_sel.setChecked(True)
 
         self.layout.addWidget(self.label)
@@ -390,12 +390,12 @@ class RtlPath(QtWidgets.QWidget):
         path = Path(self.path_text.text())
         if checked:
             # Add a recursive glob to the end of the string
-            if path.parts[-2:] != ("**", "*"):
-                path = path / "**" / "*"
+            if path.name != "**":
+                path = path / "**"
         else:
             # Remove a recursive glob at the end of a string
-            if path.parts[-2:] == ("**", "*"):
-                path = path.parent.parent
+            if path.name == "**":
+                path = path.parent
 
         self.path_text.setText(str(path))
 
