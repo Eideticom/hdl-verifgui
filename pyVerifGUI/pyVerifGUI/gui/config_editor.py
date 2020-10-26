@@ -190,11 +190,9 @@ class ConfigEditor(QtWidgets.QWidget):
         self.top_module.setText(config.get("top_module", ""))
         self.repo_name.setText(config.get("repo_name", ""))
         self._core_dir_path = self.config_path.parent / self.core_path.text()
+        self.rtl.set_core_dir(self._core_dir_path)
         rtl_dirs = config.get("rtl_dirs")
-        # Only import "proper" rtl dirs
-        # XXX could pose a migration issue, given we support more types
-        if type(rtl_dirs) is dict:
-            self.rtl.update(rtl_dirs, self._core_dir_path)
+        self.rtl.update(rtl_dirs, self._core_dir_path)
 
         self.parser_args.setPlainText(config.get("parse_args", ""))
         self.verilator_args.setPlainText(config.get("verilator_args", ""))
@@ -287,11 +285,11 @@ class RtlIncludes(QtWidgets.QWidget):
         """Required so new configs can appropriately select files based on correct core dir"""
         self.core_dir = core_dir
 
-    def update(self, rtl: dict, core_dir):
+    def update(self, rtl: List, core_dir):
         """Updates the widgets to display"""
         self.core_dir = Path(core_dir)
 
-        for path in rtl.keys():
+        for path in rtl:
             self._add_file(file=path)
 
     def dump(self):
@@ -313,7 +311,7 @@ class RtlIncludes(QtWidgets.QWidget):
         self.layout.replaceWidget(self.add_widget, rtl_file)
         self.layout.addWidget(self.add_widget)
         if not file:
-            rtl_file.browse()
+            rtl_file.browse(path_type="file")
 
     def _add_folder(self, checked=False, folder=""):
         """Adds a folder to include"""
@@ -323,7 +321,7 @@ class RtlIncludes(QtWidgets.QWidget):
         self.layout.replaceWidget(self.add_widget, rtl_folder)
         self.layout.addWidget(self.add_widget)
         if not folder:
-            rtl_folder.browse()
+            rtl_folder.browse(path_type="folder")
 
     def remove(self, include: QtWidgets.QWidget):
         """Removes a file or folder"""
@@ -345,7 +343,8 @@ class RtlIncludes(QtWidgets.QWidget):
                 # Check that the file/folder exists
                 if not path.exists():
                     # Check globs if we can't find a specific file
-                    if len(glob(str(path))) == 0:
+
+                    if len(glob(str(path), recursive=True)) == 0:
                         errors.append(f"{include.include} does not specify at least one file!")
 
         return errors
@@ -400,10 +399,19 @@ class RtlPath(QtWidgets.QWidget):
 
         self.path_text.setText(str(path))
 
-    def browse(self):
+    def browse(self, path_type: str = "folder"):
         """Browse to replace current folder"""
-        dialog = QtWidgets.QFileDialog.getExistingDirectory
-        path = dialog(self, "Choose RTL Include Directory", self.path_text.text())
+        if self.path_text.text():
+            path = self.path_text.text()
+        else:
+            path = self.core_dir
+
+        if path_type == "folder":
+            dialog = QtWidgets.QFileDialog.getExistingDirectory
+            path = dialog(self, "Choose RTL Include Directory", str(path))
+        elif path_type == "file":
+            dialog = QtWidgets.QFileDialog.getOpenFileName
+            path, _ = dialog(self, "Choose RTL File to add", str(path), "Verilog/SystemVerilog (*.sv *.v)")
 
         if path:
             path = os.path.relpath(path, str(self.core_dir))

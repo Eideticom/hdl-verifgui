@@ -276,7 +276,7 @@ fn add_directory(path: &PathBuf, extensions: &Vec<String>, files: &mut Vec<PathB
         match dir {
             Ok(entry) => {
                 let entry = entry.path();
-                if entry.is_dir() && check_file_extension(&entry, extensions) {
+                if entry.is_file() && check_file_extension(&entry, extensions) {
                     files.push(entry);
                 }
             },
