@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets
-from yaml import dump
+from oyaml import dump
 import subprocess as sp
 import pyparsing as pp
 from pathlib import Path

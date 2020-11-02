@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import safe_load
+from oyaml import safe_load
 
 from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import ModuleTreeItem, ModuleTreeItemModel

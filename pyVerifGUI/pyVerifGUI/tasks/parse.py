@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets
-from yaml import safe_load
+from oyaml import safe_load
 from pathlib import Path
 import shutil
 

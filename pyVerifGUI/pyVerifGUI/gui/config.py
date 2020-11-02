@@ -19,7 +19,7 @@ import sys
 import os
 import importlib
 from os import PathLike
-from yaml import safe_load, dump
+from oyaml import safe_load, dump
 from pathlib import Path
 from qtpy import QtCore, QtWidgets, QtGui
 import copy

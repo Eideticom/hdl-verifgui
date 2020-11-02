@@ -19,7 +19,7 @@ import random
 import tempfile
 import hashlib
 from pathlib import Path
-from yaml import safe_load, dump
+from oyaml import safe_load, dump
 from typing import Union, List
 
 from pyVerifGUI.gui.config import Config, ConfigError

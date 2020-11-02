@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import load, FullLoader, dump, safe_load
+from oyaml import safe_load, dump
 import shutil
 import copy
 from typing import Sequence

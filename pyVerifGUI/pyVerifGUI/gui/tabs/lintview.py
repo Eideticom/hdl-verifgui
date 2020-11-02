@@ -13,7 +13,7 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from yaml import safe_load, dump
+from oyaml import safe_load, dump
 import shutil
 from datetime import date
 
