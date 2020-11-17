@@ -1,0 +1,9 @@
+# Python-specific ignores
+__pycache__
+.venv
+*.egg-info
+dist
+build
+
+# Doxygen
+docs/
