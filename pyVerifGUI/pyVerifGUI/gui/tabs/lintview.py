@@ -13,21 +13,26 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import safe_load, dump
-import shutil
+from oyaml import safe_load
 from datetime import date
+from typing import Tuple
+import shutil
 
 from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import LintMessageModel, DiffLintMessageModel, MessageType
+from pyVerifGUI.gui.base_tab import is_tab
 
 from .messageview import MessageViewTab
 
 
+@is_tab
 class LintViewTab(MessageViewTab):
+    _name = "lint"
+    _display = "Linter"
+
     """Provides a view of the linter output"""
-    def __init__(self, parent, config):
-        super().__init__(parent, config, LintMessageModel,
-                         DiffLintMessageModel)
+    def _post_init(self):
+        super()._post_init(LintMessageModel, DiffLintMessageModel)
         self.dialog = AddWaiverDialog(self.waiver_widget)
         self.waiver_type = "linter"
         self.status_name = task_names.lint
@@ -39,6 +44,9 @@ class LintViewTab(MessageViewTab):
         self.view_linter_warning_act.triggered.connect(self.viewWarning)
         self.context_menu.addSection("Info")
         self.context_menu.addAction(self.view_linter_warning_act)
+
+    def _verify(self) -> Tuple[bool, str]:
+        return (False, "Too lazy to set up verification")
 
     def viewWarning(self):
         """Opens a link to the selected warning in your browser"""

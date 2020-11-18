@@ -21,11 +21,10 @@ from argparse import Namespace
 from typing import Callable
 
 from pyVerifGUI.tasks import task_names
+from pyVerifGUI.gui.tabs import implemented_tabs
 
 from .config import Config
 from .menus import FileMenu, ViewMenu, HelpMenu
-from .tabs.designview import DesignViewTab
-from .tabs.lintview import LintViewTab
 from .tabs.overview import OverviewTab
 
 
@@ -37,6 +36,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     # Signal to update GUI view
     update_view = QtCore.Signal()
+
+    globalUpdate = QtCore.Signal()
 
     def __init__(self, arguments: Namespace, app_path: str):
         super().__init__()
@@ -56,21 +57,14 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.layout = QtWidgets.QVBoxLayout(self.central_widget)
 
-        #### Tab creation and overview
+        # Set up tab widget with overview tab to start
         self.tabWidget = QtWidgets.QTabWidget(self.central_widget)
         self.tabWidget.setObjectName("tabWidget")
-        self.overview_tab = OverviewTab(self.tabWidget, self.config)
+        self.overview_tab = OverviewTab(self, self.config)
         self.tabWidget.addTab(self.overview_tab, "Overview")
-        self.design_tab = DesignViewTab(self.tabWidget, self.config)
-        self.tabWidget.addTab(self.design_tab, "Hierarchy")
-        self.lint_tab = LintViewTab(self.tabWidget, self.config)
-        self.tabWidget.addTab(self.lint_tab, "Linter")
-        # Start with first tab (overview) open
-        self.tabWidget.setCurrentIndex(0)
-
         #### Progress bar widget
         self.progress_widget = ProgressBar(self.central_widget)
-        # Signals
+        # Specific progress signals
         self.overview_tab.runner.run_began.connect(
             self.progress_widget.beginTracking)
         self.overview_tab.runner.test_finished.connect(
@@ -81,16 +75,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.layout.addWidget(self.progress_widget)
 
         #### Update signals
-        # These are passed around when some event triggers an update of models, etc.
-        self.config.buildChanged.connect(self.update_view)
-        self.config.buildChanged.connect(self.checkDependancies)
-        self.update_view.connect(self.updateTitle)
-        self.update_view.connect(self.overview_tab.runner.updateBuildStatus)
-        # Design tab will always update on a build change
-        self.update_view.connect(self.design_tab.onUpdate)
-        self.update_view.connect(self.lint_tab.modelUpdate)
-        # update view once task completes
-        self.overview_tab.runner.task_finished.connect(self.update_view)
+        # This may couple everything together too much but it's easier for
+        # everything to coalesce into a single spot for now and break it out
+        # if it becomes an issue later.
+
+        # Connect events into global update
+        self.config.buildChanged.connect(self.globalUpdate)
+        self.overview_tab.runner.task_finished.connect(self.globalUpdate)
+        # Connect global update to various utilities
+        self.globalUpdate.connect(self.updateTitle)
+        self.globalUpdate.connect(self.checkDependancies)
+        self.globalUpdate.connect(self.overview_tab.runner.updateBuildStatus)
 
         #### Message Output Box
         stdout_log_enabled = False
@@ -103,12 +98,17 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                              stdout_log_enabled=stdout_log_enabled,
                              stdout_out_enabled=stdout_out_enabled,
                              widget_enabled=True)
-        # Signals
+        # Connect log results
         self.config.log_output.connect(self.logger.log_out)
         self.overview_tab.runner.run_results.connect(self.logger.write_output)
         self.overview_tab.runner.log_output.connect(self.logger.log_out)
         self.overview_tab.runner.run_stdout.connect(self.logger.stdout)
-        self.design_tab.log_output.connect(self.logger.log_out)
+
+        # TODO rearrange init sequence so it's more logically consistent
+        # Add extra tabs
+        self.addTabs()
+        # Start with first tab (overview) open
+        self.tabWidget.setCurrentIndex(0)
 
         #### Dock Widgets
         self.log_dock = QtWidgets.QDockWidget("Logging", self)
@@ -137,11 +137,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.rerun_button.clicked.connect(self.task_dialog.run)
         self.tabWidget.setCornerWidget(self.rerun_button)
         # Update corner button on tab change
-        self.tabWidget.currentChanged.connect(self.updateRerunButton)
+        # TODO revamp or remove
+        #self.tabWidget.currentChanged.connect(self.updateRerunButton)
 
         #### Summary report generation
         report_task = self.overview_tab.runner.getTask(task_names.report)
-        report_task.addSummaryFn(self.lint_tab.generateSummary)
+        # TODO revamp
+        #report_task.addSummaryFn(self.lint_tab.generateSummary)
 
         #### Menu bar
         self.menu_bar = QtWidgets.QMenuBar(self)
@@ -181,6 +183,26 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.load_update_timer.start(1000)  # update once per second
         self.updateLoad()
 
+    def addTabs(self):
+        """Adds all of the tabs"""
+        # Instantiate every tab
+        self.tabs = []
+        for tab in implemented_tabs:
+            self.tabs.append(tab(self.tabWidget, self.config))
+            valid, msg = self.tabs[-1]._verify()
+            inx = self.tabWidget.addTab(self.tabs[-1], self.tabs[-1]._display)
+
+            if valid:
+                # Only connect signals if it is set up properly
+                self.tabs[-1].updateEvent.connect(self.globalUpdate)
+                self.globalUpdate.connect(self.tabs[-1].update)
+
+                self.tabs[-1].logOutput.connect(self.logger.log_out)
+            else:
+                # Disable tab and display tool text if validation fails
+                self.tabWidget.setTabEnabled(inx, False)
+                self.tabWidget.setTabToolTip(inx, msg)
+
     def updateLoad(self):
         """Updates CPU load and memory usage status bar"""
         self.load_widget.setText(
@@ -198,6 +220,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event: QtGui.QCloseEvent):
         """Overridden here to save any open text editors"""
+        # TODO implement closing any editors in any tabs
         if not self.closeTabEditor(self.lint_tab):
             event.ignore()
             return
@@ -205,8 +228,10 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.overview_tab.runner.killAllTasks()
 
         # Close if nothing is unsaved
+        # TODO provide method to override, e.g. unsafely close
         super().closeEvent(event)
 
+    # TODO revamp or remove
     def updateRerunButton(self, index: int):
         """Called when tabs change to update the rerun button/dialog"""
         del index

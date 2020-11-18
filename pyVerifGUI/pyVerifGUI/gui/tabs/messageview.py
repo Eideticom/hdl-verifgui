@@ -20,20 +20,16 @@ from typing import Sequence
 from pyVerifGUI.gui.editor import Editor
 from pyVerifGUI.gui.models import MessageType, MessageListType
 from pyVerifGUI.gui.models.message import Messages
+from pyVerifGUI.gui.base_tab import Tab
 
-
-class MessageViewTab(QtWidgets.QWidget):
+class MessageViewTab(Tab):
     """Base class to view messages with associated waivers"""
 
     # Signal emitted when a file is opened
     fileOpened = QtCore.Signal(str, int)
-    log_output = QtCore.Signal(str)
 
-    def __init__(self, parent, config, messageModel: Messages,
+    def _post_init(self, messageModel: Messages,
                  diffMessageModel: Messages):
-        super().__init__(parent)
-        self.config = config
-
         self.messageModel = messageModel
         self.diffMessageModel = diffMessageModel
 
@@ -666,7 +662,8 @@ Waiving reason: {waiver['reason']}
                 open(self.config.build_path / f"{prefix}_messages.yaml"))
             waivers = safe_load(open(waivers_path))
         except FileNotFoundError:
-            self.log_output.emit("Unable to load messages.")
+            # TODO this doesn't handle this error properly...
+            self.log("Unable to load messages.")
 
         diff_build_path = self.config.builds_path / self.diff_tab.diff_choose.currentText(
         )
@@ -723,7 +720,7 @@ Waiving reason: {waiver['reason']}
                     if len(model.orphans.messages) > 0:
                         self.message_show_orphans.show()
                 except FileNotFoundError:
-                    self.log_output.emit(
+                    self.log(
                         f"Error: unable to load {self.waiver_type} messages/waivers"
                     )
 
@@ -747,6 +744,10 @@ Waiving reason: {waiver['reason']}
     def generateSummary(self) -> str:
         """Required to implement in subclass. Generates the summary text"""
         raise NotImplementedError
+
+    def update(self):
+        self.viewUpdate()
+        self.modelUpdate()
 
 
 #### Tabs for the "extra" functions

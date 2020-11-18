@@ -13,20 +13,20 @@
 
 from qtpy import QtWidgets, QtCore, QtGui
 from oyaml import safe_load
+from typing import Tuple
 
 from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import ModuleTreeItem, ModuleTreeItemModel
+from pyVerifGUI.gui.base_tab import Tab, is_tab
 
 
-class DesignViewTab(QtWidgets.QWidget):
+@is_tab
+class DesignViewTab(Tab):
     """Allows visualisation of the design via module hierarchy"""
+    _name = "design"
+    _display = "Design"
 
-    log_output = QtCore.Signal(str)
-
-    def __init__(self, parent, config):
-        super().__init__(parent)
-        self.config = config
-
+    def _post_init(self):
         # Basic layout
         self.layout = QtWidgets.QGridLayout(self)
         self.layout.setObjectName("layout")
@@ -69,6 +69,10 @@ class DesignViewTab(QtWidgets.QWidget):
         self.sv_interfaces = None
         self.sv_modules = None
 
+    # TODO check if configuration is valid to support this tab's existence
+    def _verify(self) -> Tuple[bool, str]:
+        return (True, "")
+
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
         """Overridden to generate a context menu"""
         selection_model = self.treeView.selectionModel()
@@ -83,10 +87,10 @@ class DesignViewTab(QtWidgets.QWidget):
                 module = selection_model.currentIndex()
                 path = self.getHierarchy(module)
                 QtWidgets.QApplication.clipboard().setText(path)
-                self.log_output.emit(
+                self.log(
                     f"Copied hierarchal path {path} to clipboard")
 
-    def onUpdate(self):
+    def update(self):
         """Handles updating model or view"""
         if self.config.build is not None:
             if self.config.status[task_names.parse]:

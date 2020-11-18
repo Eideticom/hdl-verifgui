@@ -24,6 +24,8 @@ from pyVerifGUI.gui.editor import Editor
 from pyVerifGUI.gui.config_editor import ConfigEditorDialog
 
 
+# This is not defined with the rest because it's its own special thing.
+# The overview should always be displayed.
 class OverviewTab(QtWidgets.QWidget):
     """Provides an overview of the current status.
 
