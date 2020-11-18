@@ -15,6 +15,7 @@ from qtpy import QtCore, QtWidgets
 from collections import namedtuple
 from types import SimpleNamespace
 from typing import List
+import time
 
 # Collection of names of tasks
 # here to avoid some dependancy issues
@@ -51,26 +52,37 @@ class Task(QtCore.QObject):
     @property
     def status(self) -> str:
         """Returns either "passed" or "failed" """
-        return self.config.status.get(f"{self._name}_status", None)
+        try:
+            return self.config.status[f"{self._name}"]["status"]
+        except KeyError:
+            return "failed"
 
     @status.setter
     def status(self, status: str):
         """Updates status"""
         # TODO come up with a way to migrate the two fields into one, that can transition nicely
-        self.config.status.update({f"{self._name}_status": status})
+        self.config.status.update({f"{self._name}": {
+            "finished": self.finished,
+            "status": status,
+            "time": time.time(),
+        }})
 
     @property
     def finished(self) -> bool:
         """Returns whether Task has finished or not"""
         try:
-            return self.config.status[self._name]
+            return self.config.status[self._name]["finished"]
         except KeyError:
             return False
 
     @finished.setter
     def finished(self, status):
         """Setter for finished status"""
-        self.config.status.update({self._name: status})
+        self.config.status.update({self._name: {
+            "finished": status,
+            "status": self.status,
+            "time": time.time(),
+        }})
 
     @property
     def running(self) -> bool:

@@ -18,9 +18,9 @@ from datetime import date
 from typing import Tuple
 import shutil
 
-from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import LintMessageModel, DiffLintMessageModel, MessageType
 from pyVerifGUI.gui.base_tab import is_tab
+from pyVerifGUI.tasks.lint import LintTask
 
 from .messageview import MessageViewTab
 
@@ -36,7 +36,7 @@ class LintViewTab(MessageViewTab):
         super()._post_init(LintMessageModel, DiffLintMessageModel)
         self.dialog = AddWaiverDialog(self.waiver_widget)
         self.waiver_type = "linter"
-        self.status_name = task_names.lint
+        self.status_name = LintTask._name
         self.summary_label.setText("Linter Summary")
 
         # add "open message URL action to context menu"
@@ -47,7 +47,8 @@ class LintViewTab(MessageViewTab):
         self.context_menu.addAction(self.view_linter_warning_act)
 
     def _verify(self) -> Tuple[bool, str]:
-        return (False, "Too lazy to set up verification")
+        # TODO properly verify
+        return (True, "Too lazy to set up verification")
 
     def viewWarning(self):
         """Opens a link to the selected warning in your browser"""

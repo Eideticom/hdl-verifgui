@@ -15,12 +15,14 @@ from qtpy import QtWidgets, QtCore, QtGui
 from oyaml import safe_load, dump
 import shutil
 import copy
+import time
 from typing import Sequence
 
 from pyVerifGUI.gui.editor import Editor
 from pyVerifGUI.gui.models import MessageType, MessageListType
 from pyVerifGUI.gui.models.message import Messages
 from pyVerifGUI.gui.base_tab import Tab
+from pyVerifGUI.tasks.parse import ParseTask
 
 class MessageViewTab(Tab):
     """Base class to view messages with associated waivers"""
@@ -33,6 +35,10 @@ class MessageViewTab(Tab):
         self.messageModel = messageModel
         self.diffMessageModel = diffMessageModel
 
+        # Prevents us from updating selection when it hasn't changed
+        self.old_selection = "all"
+        # Prevents us from updating our models when they haven't changed
+        self.last_model_update = time.time()
         self.dialog = None
         self.old_waiver = None
         self.waiver_type = ""
@@ -565,8 +571,6 @@ class MessageViewTab(Tab):
 
     def filterLints(self):
         """Selects the appropriately filtered message types"""
-        model = self.message_table.model()
-        diff_model = self.diff_tab.table.model()
         self.orphan_update.setEnabled(False)
         if self.message_show_unwaived.isChecked():
             selection = "unwaived"
@@ -580,8 +584,15 @@ class MessageViewTab(Tab):
         else:
             selection = "all"
 
-        model.selectMessages(selection)
-        diff_model.selectMessages(selection)
+        # Don't run this potentially expensive operation if we
+        # haven't changed our selection.
+        if selection != self.old_selection:
+            model = self.message_table.model()
+            diff_model = self.diff_tab.table.model()
+            model.selectMessages(selection)
+            diff_model.selectMessages(selection)
+
+        self.old_selection = selection
 
     def checkIfMessage(self, message: MessageType) -> bool:
         """Returns true if message, false if waiver"""
@@ -692,43 +703,51 @@ Waiving reason: {waiver['reason']}
 
     def shouldLoadMessages(self) -> bool:
         """Determines if messages should be loaded from filesystem or not"""
-        return self.config.status[self.status_name]
+        if self.config.build is not None:
+            if self.config.status[self.status_name]["finished"]:
+                return True
+
+        return False
 
     def modelUpdate(self):
         """Slot for managing model updates"""
+
+        if self.config.status[self.status_name]["time"] == self.last_model_update:
+            return
+
+        self.last_model_update = time.time()
+
         model = self.messageModel([], [])
         diff_model = self.diffMessageModel([], [], [], [])
         # Hide unless we specifically have orphans
         self.message_show_orphans.hide()
-        if self.config.build is not None:
-            self.updateDiffBuilds()
 
-            if self.shouldLoadMessages():
-                try:
-                    self.updateSummary()
-                    (messages, waivers, diff_messages,
-                     diff_waivers) = self.loadMessages(self.waiver_type)
+        self.updateDiffBuilds()
 
-                    model = self.messageModel(messages, waivers)
-                    diff_model = self.diffMessageModel(messages, diff_messages,
-                                                       waivers, diff_waivers)
+        try:
+            (messages, waivers, diff_messages,
+                diff_waivers) = self.loadMessages(self.waiver_type)
 
-                    model.view_full_filenames = self._view_full_filenames
-                    diff_model.view_full_filenames = self._view_full_filenames
+            model = self.messageModel(messages, waivers)
+            diff_model = self.diffMessageModel(messages, diff_messages,
+                                                waivers, diff_waivers)
 
-                    # We have orphans, we can show the orphans filter
-                    if len(model.orphans.messages) > 0:
-                        self.message_show_orphans.show()
-                except FileNotFoundError:
-                    self.log(
-                        f"Error: unable to load {self.waiver_type} messages/waivers"
-                    )
+            model.view_full_filenames = self._view_full_filenames
+            diff_model.view_full_filenames = self._view_full_filenames
+
+            # We have orphans, we can show the orphans filter
+            if len(model.orphans.messages) > 0:
+                self.message_show_orphans.show()
+        except FileNotFoundError:
+            self.log(
+                f"Error: unable to load {self.waiver_type} messages/waivers"
+            )
 
         self.message_table.setModel(model)
         self.diff_tab.table.setModel(diff_model)
         self.message_table.selectionModel().currentRowChanged.connect(
             self.onSelection)
-        self.viewUpdate()
+        self.updateSummary()
 
     def viewUpdate(self):
         """Slot for managing view updates"""
@@ -746,8 +765,12 @@ Waiving reason: {waiver['reason']}
         raise NotImplementedError
 
     def update(self):
-        self.viewUpdate()
-        self.modelUpdate()
+        if self.shouldLoadMessages():
+            self.setEnabled(True)
+            self.modelUpdate()
+            self.viewUpdate()
+        else:
+            self.setEnabled(False)
 
 
 #### Tabs for the "extra" functions
