@@ -31,6 +31,10 @@ def is_tab(cls):
     return cls
 
 class Tab(QtWidgets.QWidget):
+    # Change this to affect the placement of a tab
+    # Lower numbers get placed first, ties are resolved however sorted() does it
+    _placement = -1
+
     """Base class to define a tab"""
     def __init__(self, parent, config: Config):
         """Failure here should simply mean the tab is unavailable.

@@ -29,6 +29,7 @@ from .messageview import MessageViewTab
 class LintViewTab(MessageViewTab):
     _name = "lint"
     _display = "Linter"
+    _placement = 2
 
     """Provides a view of the linter output"""
     def _post_init(self):

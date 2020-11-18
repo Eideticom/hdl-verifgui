@@ -84,7 +84,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.overview_tab.runner.task_finished.connect(self.globalUpdate)
         # Connect global update to various utilities
         self.globalUpdate.connect(self.updateTitle)
-        self.globalUpdate.connect(self.checkDependancies)
+        self.globalUpdate.connect(self.checkDependencies)
         self.globalUpdate.connect(self.overview_tab.runner.updateBuildStatus)
 
         #### Message Output Box
@@ -186,18 +186,20 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
     def addTabs(self):
         """Adds all of the tabs"""
         # Instantiate every tab
-        self.tabs = []
-        for tab in implemented_tabs:
-            self.tabs.append(tab(self.tabWidget, self.config))
-            valid, msg = self.tabs[-1]._verify()
-            inx = self.tabWidget.addTab(self.tabs[-1], self.tabs[-1]._display)
+        self.tabs = [tab(self.tabWidget, self.config) for tab in implemented_tabs]
+        # Sort by provided placement index
+        self.tabs.sort(key=lambda tab: tab._placement)
+
+        for tab in self.tabs:
+            valid, msg = tab._verify()
+            inx = self.tabWidget.addTab(tab, tab._display)
 
             if valid:
                 # Only connect signals if it is set up properly
-                self.tabs[-1].updateEvent.connect(self.globalUpdate)
-                self.globalUpdate.connect(self.tabs[-1].update)
+                tab.updateEvent.connect(self.globalUpdate)
+                self.globalUpdate.connect(tab.update)
 
-                self.tabs[-1].logOutput.connect(self.logger.log_out)
+                tab.logOutput.connect(self.logger.log_out)
             else:
                 # Disable tab and display tool text if validation fails
                 self.tabWidget.setTabEnabled(inx, False)
@@ -220,10 +222,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event: QtGui.QCloseEvent):
         """Overridden here to save any open text editors"""
-        # TODO implement closing any editors in any tabs
-        if not self.closeTabEditor(self.lint_tab):
-            event.ignore()
-            return
+        for tab in self.tabs:
+            if not tab.closeEditors():
+                QtWidgets.QMessageBox.information(
+                    "Unable to Close!",
+                    f"The '{tab._display}' tab is blocking this application from closing."
+                )
+                return
 
         self.overview_tab.runner.killAllTasks()
 
@@ -271,7 +276,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             f"Verification GUI - Build '{self.config.build}' from '{self.config.config_path}'"
         )
 
-    def checkDependancies(self):
+    # TODO this needs to only load on boot...
+    # oooor be ran by the linter task
+    def checkDependencies(self):
         """Check whether required programs have been installed"""
         try:
             sp.run(["verilator", "--help"], capture_output=True)

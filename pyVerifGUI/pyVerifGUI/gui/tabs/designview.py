@@ -25,6 +25,7 @@ class DesignViewTab(Tab):
     """Allows visualisation of the design via module hierarchy"""
     _name = "design"
     _display = "Design"
+    _placement = 0
 
     def _post_init(self):
         # Basic layout
