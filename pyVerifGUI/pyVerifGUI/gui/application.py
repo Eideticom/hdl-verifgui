@@ -52,7 +52,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         # Config is currently being used as a catch all for some global state
         self.config = Config(arguments, app_path)
 
-        #### Central Layout
+        #### Create central widget
         self.central_widget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.central_widget)
         self.layout = QtWidgets.QVBoxLayout(self.central_widget)
@@ -104,8 +104,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.overview_tab.runner.log_output.connect(self.logger.log_out)
         self.overview_tab.runner.run_stdout.connect(self.logger.stdout)
 
-        # TODO rearrange init sequence so it's more logically consistent
         # Add extra tabs
+        # Must be done after logger is setup so we can hook them into the logger
         self.addTabs()
         # Start with first tab (overview) open
         self.tabWidget.setCurrentIndex(0)
@@ -119,14 +119,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.log_dock.setWidget(self.log_tabs)
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.log_dock)
 
-        #### Menubar etc.
-        self.menubar = QtWidgets.QMenuBar(self)
-        self.menubar.setObjectName("menubar")
-        self.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(self)
-        self.statusbar.setObjectName("statusbar")
-        self.setStatusBar(self.statusbar)
-
         #### Summary report generation
         report_task = self.overview_tab.runner.getTask(task_names.report)
         for tab in self.tabs:
@@ -138,6 +130,14 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.menu_bar.addMenu(ViewMenu(self.menu_bar))
         self.menu_bar.addMenu(HelpMenu(self.menu_bar))
         self.setMenuBar(self.menu_bar)
+
+        #### CPU load / memory use indicator
+        self.load_widget = QtWidgets.QLabel(self)
+        self.statusBar().addPermanentWidget(self.load_widget)
+        self.load_update_timer = QtCore.QTimer(self)
+        self.load_update_timer.timeout.connect(self.updateLoad)
+        self.load_update_timer.start(1000)  # update once per second
+        self.updateLoad()
 
         # If given, load config/build
         if arguments.config is not None:
@@ -161,14 +161,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
                     "A build must be loaded before test selection can occur, remove --tests/-t or add a --build/-b"
                 )
                 exit(-1)
-
-        #### CPU load / memory use indicator
-        self.load_widget = QtWidgets.QLabel(self)
-        self.statusBar().addPermanentWidget(self.load_widget)
-        self.load_update_timer = QtCore.QTimer(self)
-        self.load_update_timer.timeout.connect(self.updateLoad)
-        self.load_update_timer.start(1000)  # update once per second
-        self.updateLoad()
 
     def onConfigUpdate(self):
         """Handles updates coming from config.
