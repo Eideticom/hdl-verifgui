@@ -80,7 +80,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         # if it becomes an issue later.
 
         # Connect events into global update
-        self.config.buildChanged.connect(self.globalUpdate)
+        self.config.buildChanged.connect(self.onConfigUpdate) # Slot emits globalUpdate
         self.overview_tab.runner.task_finished.connect(self.globalUpdate)
         # Connect global update to various utilities
         self.globalUpdate.connect(self.updateTitle)
@@ -183,6 +183,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.load_update_timer.start(1000)  # update once per second
         self.updateLoad()
 
+    def onConfigUpdate(self):
+        """Handles updates coming from config.
+
+        Runs some tasks before tabs get the update"""
+        self.verifyTabs()
+        self.globalUpdate.emit()
+
     def addTabs(self):
         """Adds all of the tabs"""
         # Instantiate every tab
@@ -191,19 +198,24 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.tabs.sort(key=lambda tab: tab._placement)
 
         for tab in self.tabs:
-            valid, msg = tab._verify()
-            inx = self.tabWidget.addTab(tab, tab._display)
+            self.tabWidget.addTab(tab, tab._display)
 
-            if valid:
-                # Only connect signals if it is set up properly
-                tab.updateEvent.connect(self.globalUpdate)
-                self.globalUpdate.connect(tab.update)
+            tab.updateEvent.connect(self.globalUpdate)
+            self.globalUpdate.connect(tab.update)
+            tab.logOutput.connect(self.logger.log_out)
 
-                tab.logOutput.connect(self.logger.log_out)
-            else:
+        # Verify and disable any tabs that don't validate
+        self.verifyTabs()
+
+    def verifyTabs(self):
+        for inx in range(self.tabWidget.count()):
+            tab = self.tabWidget.widget(inx)
+            if getattr(tab, "_is_tab", False):
+                rc, msg = tab._verify()
                 # Disable tab and display tool text if validation fails
-                self.tabWidget.setTabEnabled(inx, False)
+                self.tabWidget.setTabEnabled(inx, rc)
                 self.tabWidget.setTabToolTip(inx, msg)
+
 
     def updateLoad(self):
         """Updates CPU load and memory usage status bar"""

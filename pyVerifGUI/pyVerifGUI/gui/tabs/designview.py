@@ -14,10 +14,11 @@
 from qtpy import QtWidgets, QtCore, QtGui
 from oyaml import safe_load
 from typing import Tuple
+import time
 
-from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import ModuleTreeItem, ModuleTreeItemModel
 from pyVerifGUI.gui.base_tab import Tab, is_tab
+from pyVerifGUI.tasks.parse import ParseTask
 
 
 @is_tab
@@ -69,9 +70,14 @@ class DesignViewTab(Tab):
         self.sv_hierarchy = None
         self.sv_interfaces = None
         self.sv_modules = None
+        self.last_update = time.time()
 
-    # TODO check if configuration is valid to support this tab's existence
     def _verify(self) -> Tuple[bool, str]:
+        if self.config.config.get("working_dir") is None:
+            return (False, "Configuration does not have working directory!")
+        if self.config.config.get("rtl_dirs") is None:
+            return (False, "No sources specified")
+
         return (True, "")
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent):
@@ -94,7 +100,7 @@ class DesignViewTab(Tab):
     def update(self):
         """Handles updating model or view"""
         if self.config.build is not None:
-            if self.config.status[task_names.parse]:
+            if self.config.status[ParseTask._name]["finished"]:
                 self.updateTree()
             else:
                 self.removeTree()
@@ -102,6 +108,11 @@ class DesignViewTab(Tab):
 
     def updateTree(self):
         """Called when new parsed design information is available"""
+        # Only update when we need to
+        if self.config.status[ParseTask._name]["time"] == self.last_update:
+            return
+        else:
+            self.last_update = time.time()
 
         if self.read_parsed():
             tree = ModuleTreeItem(self.config.build)

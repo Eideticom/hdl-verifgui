@@ -47,8 +47,12 @@ class LintViewTab(MessageViewTab):
         self.context_menu.addAction(self.view_linter_warning_act)
 
     def _verify(self) -> Tuple[bool, str]:
-        # TODO properly verify
-        return (True, "Too lazy to set up verification")
+        if self.config.config.get("working_dir") is None:
+            return (False, "Configuration does not have working directory!")
+        if self.config.config.get("rtl_dirs") is None:
+            return (False, "No sources specified")
+
+        return (True, "")
 
     def viewWarning(self):
         """Opens a link to the selected warning in your browser"""
@@ -74,7 +78,6 @@ class LintViewTab(MessageViewTab):
             "text_hash": self.dialog.text_hash,
             "text": self.dialog.text_text.text(),
             "waiver": True,
-            # TODO kinda hacky, need to slightly revamp view
             "legitimate": False,
         }
 

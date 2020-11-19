@@ -1,16 +1,16 @@
-"""Base class for a tab"""
-
-"""
-Questions to answer:
-
-How do I do dependency management?
-- Current system is *ok*, but somewhat falls apart with signalling.
-- How do I decide when to update a tab? 
-- Should every tab have an update signal and slot that are freely used?
-- Up to the tab to decide what/when to display.
-
-Config should be passed in as a deepcopy 
-"""
+###############################################################################
+# @file pyVerifGUI/gui/base_tab.py
+# @package pyVerifGUI.gui.base_tab
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+# All rights reserved
+#
+# @license Licensed under the BSD 3-Clause license.
+# This license message must appear in all versions of this code including
+# modified versions.
+#
+# @brief Base class for any new tab.
+###############################################################################
 
 from qtpy import QtWidgets, QtCore
 
@@ -94,7 +94,6 @@ class Tab(QtWidgets.QWidget):
 
     #### ------
     # Signals and slots
-    # TODO do I want to add more directed capability?
     # General update-causing events
     updateEvent = QtCore.Signal()
     # Logging events
