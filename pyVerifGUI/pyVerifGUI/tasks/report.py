@@ -14,6 +14,7 @@
 from typing import Callable
 
 from .base import Task, task_names
+from pyVerifGUI.gui.base_tab import Tab
 
 
 class ReportTask(Task):
@@ -23,11 +24,15 @@ class ReportTask(Task):
     _description = "Generate project report"
 
     _summary_fns = []
+    _tabs = []
 
     def addSummaryFn(self, fn: Callable):
         """Append a summary function to the list of functions to run"""
-
         self._summary_fns.append(fn)
+
+    def addTabSummary(self, tab: Tab):
+        """Append a tab to the list of tabs to generate the report from"""
+        self._tabs.append(tab)
 
     def run(self, is_last=True):
         """Generates a report"""
@@ -37,6 +42,11 @@ class ReportTask(Task):
 - Build: {self.config.build}
 
 """
+
+        for tab in self._tabs:
+            text += f"# {tab._display} Report\n\n"
+            text += tab._report()
+            text += "\n\n"
 
         for fn in self._summary_fns:
             text += fn()

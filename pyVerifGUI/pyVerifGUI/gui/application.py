@@ -142,8 +142,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         #### Summary report generation
         report_task = self.overview_tab.runner.getTask(task_names.report)
-        # TODO revamp
-        #report_task.addSummaryFn(self.lint_tab.generateSummary)
+        for tab in self.tabs:
+            report_task.addTabSummary(tab)
 
         #### Menu bar
         self.menu_bar = QtWidgets.QMenuBar(self)

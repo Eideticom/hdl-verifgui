@@ -110,3 +110,12 @@ class Tab(QtWidgets.QWidget):
         updateEvent.
         """
         raise NotImplementedError
+
+    #### ------
+    # Optional implementations
+    def _report(self) -> str:
+        """Text report, will get accumulated into a larger report.
+
+        Ideally return markdown formatted text
+        """
+        return ""
