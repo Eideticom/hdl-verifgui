@@ -127,19 +127,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.statusbar.setObjectName("statusbar")
         self.setStatusBar(self.statusbar)
 
-        #### Re-run task dialog
-        self.task_dialog = RerunTaskDialog(self)
-
-        #### Add corner button widget to re-run tasks
-        self.rerun_button = QtWidgets.QPushButton("Rerun Task", self)
-        self.rerun_button.setEnabled(False)
-        self.rerun_button.setStyleSheet("background-color: white")
-        self.rerun_button.clicked.connect(self.task_dialog.run)
-        self.tabWidget.setCornerWidget(self.rerun_button)
-        # Update corner button on tab change
-        # TODO revamp or remove
-        #self.tabWidget.currentChanged.connect(self.updateRerunButton)
-
         #### Summary report generation
         report_task = self.overview_tab.runner.getTask(task_names.report)
         for tab in self.tabs:
@@ -247,40 +234,6 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         # Close if nothing is unsaved
         # TODO provide method to override, e.g. unsafely close
         super().closeEvent(event)
-
-    # TODO revamp or remove
-    def updateRerunButton(self, index: int):
-        """Called when tabs change to update the rerun button/dialog"""
-        del index
-        tab = self.tabWidget.currentWidget()
-
-        if self.config.build is None:
-            self.rerun_button.setEnabled(False)
-            return
-
-        # Change button depending on which tab is selected
-        button_enabled = True
-        if tab is self.design_tab:
-            name = task_names.parse
-        elif tab is self.lint_tab:
-            name = task_names.lint
-        else:
-            name = ""
-            fn = None
-            button_enabled = False
-
-        try:
-            fn = self.overview_tab.runner.getTask(name).run
-        except AttributeError:
-            fn = None
-
-        self.task_dialog.update(fn, name)
-        self.rerun_button.setText(f"Re-run {name}")
-        self.rerun_button.setEnabled(button_enabled)
-        if button_enabled:
-            self.rerun_button.setStyleSheet("background-color: green")
-        else:
-            self.rerun_button.setStyleSheet("background-color: white")
 
     def updateTitle(self):
         """Updates window title with build and configuration info"""
