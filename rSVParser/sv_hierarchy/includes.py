@@ -14,17 +14,24 @@ def glob_files(patterns: List[str], extensions: List[str], add_includes: bool) -
     includes = []
 
     for inc in patterns:
-        paths = glob(inc, recursive=True)
-
-        for path in paths:
-            path = Path(path)
+        path = Path(inc)
+        if path.exists():
             if path.is_file() and path.suffix in extensions:
                 if path not in files:
                     files.append(path)
-                if add_includes and path.parent not in includes:
-                    includes.append(path.parent)
             elif path.is_dir():
                 add_directory(path, extensions, add_includes, files, includes)
+        else:
+            paths = glob(inc, recursive=True)
+            for path in paths:
+                path = Path(path)
+                if path.is_file() and path.suffix in extensions:
+                    if path not in files:
+                        files.append(path)
+                    if add_includes and path.parent not in includes:
+                        includes.append(path.parent)
+                elif path.is_dir():
+                    add_directory(path, extensions, add_includes, files, includes)
 
     return GlobResults(files, includes)
 

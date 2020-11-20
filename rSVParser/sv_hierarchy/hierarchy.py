@@ -26,7 +26,7 @@ def build(modules: Dict[str, SvModule], top_module: Union[None, str]) -> Dict[st
 
     print("Ignoring modules not found in files")
     defined_modules = list(modules.keys())
-    top = filter(lambda mod: defined_modules.contains(mod), top)
+    top = filter(lambda mod: mod in defined_modules, top)
 
     yaml_out = {}
     for module in top:
@@ -41,6 +41,8 @@ def build(modules: Dict[str, SvModule], top_module: Union[None, str]) -> Dict[st
             include,
             hier
         )})
+
+    return yaml_out
 
 def build_tree(top: str, modules: Dict[str, SvModule]) -> dict:
     """Builds out the tree to describe a module's hierarchy"""

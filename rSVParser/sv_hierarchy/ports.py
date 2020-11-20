@@ -23,7 +23,7 @@ def get_ports(
             elif net_type.type_name == "NetType":
                 net_type = tree.get_str(net_type).strip()
             elif net_type.type_name == "DataType":
-                net_type = next(tree.get_str(net_type).split(" "))
+                net_type = tree.get_str(net_type).split(" ")[0]
 
             ports.append((
                 direction,

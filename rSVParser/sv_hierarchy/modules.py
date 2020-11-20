@@ -2,7 +2,7 @@ from typing import Tuple, Dict, List
 from dataclasses import dataclass
 from pathlib import Path
 
-from py_sv_parser import SyntaxTree, SyntaxNode, unwrap_node
+from py_sv_parser import SyntaxTree, SyntaxNode, unwrap_node, unwrap_locate
 
 from .ports import get_ports
 from .helpers import get_str_or_default
@@ -19,6 +19,7 @@ class SvModule:
     path: Path
     submodules: Dict[str, str]
 
+
 def parse_tree(tree: SyntaxTree, path: Path) -> List[SvModule]:
     """Traverses tree for module declarations (and sub-instantiations)"""
     modules = []
@@ -26,6 +27,7 @@ def parse_tree(tree: SyntaxTree, path: Path) -> List[SvModule]:
         if node.type_name == "ModuleDeclaration":
             # Get module name
             name = unwrap_node(node, ["ModuleIdentifier"])
+            name = unwrap_locate(name)
             name = tree.get_str(name)
 
             parameters = get_params(tree, node)
@@ -39,7 +41,7 @@ def parse_tree(tree: SyntaxTree, path: Path) -> List[SvModule]:
 
             submodules = get_submodules(tree, node)
 
-            modules.push(SvModule(
+            modules.append(SvModule(
                 name,
                 parameters,
                 ports,
@@ -59,10 +61,12 @@ def get_submodules(tree: SyntaxTree, module: SyntaxNode) -> Dict[str, str]:
     for node in module:
         if node.type_name == "ModuleInstantiation":
             ident = unwrap_node(node, ["ModuleIdentifier"])
+            ident = unwrap_locate(ident)
             ident = tree.get_str(ident)
 
             name = unwrap_node(node, ["InstanceIdentifier"])
-            name = tree.get_str(ident)
+            name = unwrap_locate(name)
+            name = tree.get_str(name)
 
             submodules.update({ident: name})
 
@@ -74,6 +78,7 @@ def get_params(tree: SyntaxTree, module: SyntaxNode) -> List[Tuple]:
     for node in module:
         if node.type_name == "ParameterDeclaration":
             name = unwrap_node(node, ["ParameterIdentifier"])
+            name = unwrap_locate(name)
             name = tree.get_str(name)
 
             dimension = get_str_or_default(tree, node, "UnpackedDimension")
