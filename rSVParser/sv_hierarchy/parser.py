@@ -1,3 +1,4 @@
+from typing import List, Union
 from dataclasses import asdict
 from pathlib import Path
 from yaml import dump
@@ -10,6 +11,9 @@ import sv_hierarchy.modules as modules
 import sv_hierarchy.interfaces as interfaces
 import sv_hierarchy.packages as packages
 import sv_hierarchy.hierarchy as hierarchy
+
+
+# TODO surface print statements as a library somehow
 
 def main():
     """CLI access to functionality,
@@ -39,6 +43,12 @@ def main():
     if args.extension is not None:
         extensions.extend(args.extension)
 
+    # Decide if we want a top module
+    if args.top_module:
+        top_module = args.project_name
+    else:
+        top_module = None
+
     # pathlib uses .ext vs PathBuf using ext
     # this maintains CLI compatability
     for i in range(len(extensions)):
@@ -53,38 +63,45 @@ def main():
     globs = glob_files(args.include, extensions, not args.manual_pp_includes)
     if args.pp_includes is not None:
         globs.includes.extend(args.pp_includes)
+
+    out = parse_files(globs.files, globs.includes, top_module)
+
+    # Write to filesystem
+    #print("Writing outputs...")
+    dump(out["sv_modules"], open(str(base_path / "sv_modules.yaml"), "w"))
+    dump(out["sv_interfaces"], open(str(base_path / "sv_interfaces.yaml"), "w"))
+    dump(out["sv_packages"], open(str(base_path / "sv_packages.yaml"), "w"))
+    dump(out["sv_files"], open(str(base_path / "sv_files.yaml"), "w"))
+    dump(out["sv_hierarchy"], open(str(base_path / "sv_hierarchy.yaml"), "w"))
+
+
+def parse_files(files: List[Path], includes: List[Path], top_module: Union[None, str]) -> dict:
     sv_files, sv_modules, sv_interfaces, sv_packages = ({}, {}, {}, {})
-    error = False
-    includes = [str(inc) for inc in globs.includes]
-    for file in globs.files:
+    includes = [str(inc) for inc in includes]
+    for file in files:
         sv_files.update({file.name: {str(file): False}})
 
-        print(f"Parsing file {file}...")
+        #print(f"Parsing file {file}...")
         tree = parse_sv(str(file), {}, includes, False, False)
 
         for mod in modules.parse_tree(tree, file):
-            print(f"- Found module {mod.name}")
+            #print(f"- Found module {mod.name}")
             sv_modules.update({mod.name: mod})
         for interface in interfaces.parse_tree(tree, file):
-            print(f"- Found module {interface.name}")
+            #print(f"- Found module {interface.name}")
             sv_interfaces.update({interface.name: interface})
         for package in packages.parse_tree(tree, file):
-            print(f"- Found module {package.name}")
+            #print(f"- Found module {package.name}")
             sv_packages.update({package.name: package})
 
     # Build hierarchy
-    if args.top_module:
-        top_module = args.project_name
-    else:
-        top_module = None
     sv_hierarchy = hierarchy.build(sv_modules, top_module)
 
     # Set whether a given file has been included or not
-    if args.top_module:
+    if top_module:
         for module in sv_modules.values():
             name = module.path.name
             sv_files[name][str(module.path)] = True
-
 
     # Convert custom types to dicts
     for mod in sv_modules:
@@ -103,13 +120,13 @@ def main():
     for hier in sv_hierarchy:
         sv_hierarchy[hier] = asdict(sv_hierarchy[hier])
 
-    # Write to filesystem
-    print("Writing outputs...")
-    dump(sv_modules, open(str(base_path / "sv_modules.yaml"), "w"))
-    dump(sv_interfaces, open(str(base_path / "sv_interfaces.yaml"), "w"))
-    dump(sv_packages, open(str(base_path / "sv_packages.yaml"), "w"))
-    dump(sv_files, open(str(base_path / "sv_files.yaml"), "w"))
-    dump(sv_hierarchy, open(str(base_path / "sv_hierarchy.yaml"), "w"))
+    return {
+        "sv_modules": sv_modules,
+        "sv_interfaces": sv_interfaces,
+        "sv_packages": sv_packages,
+        "sv_files": sv_files,
+        "sv_hierarchy": sv_hierarchy,
+    }
 
 
 def backup_files(base_path: Path):

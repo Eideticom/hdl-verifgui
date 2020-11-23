@@ -24,7 +24,7 @@ def build(modules: Dict[str, SvModule], top_module: Union[None, str]) -> Dict[st
             else:
                 top = filter(lambda mod: mod != submod)
 
-    print("Ignoring modules not found in files")
+    #print("Ignoring modules not found in files")
     defined_modules = list(modules.keys())
     top = filter(lambda mod: mod in defined_modules, top)
 

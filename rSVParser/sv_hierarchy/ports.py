@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from py_sv_parser import SyntaxTree, SyntaxNode, unwrap_node
+from py_sv_parser import SyntaxTree, SyntaxNode, unwrap_node, unwrap_locate
 
 from .helpers import get_str_or_default
 
@@ -12,9 +12,20 @@ def get_ports(
     ports = []
     for node in declaration:
         if node.type_name == "AnsiPortDeclaration":
-            direction = get_str_or_default(tree, node, "PortDirection")
-            dimension = get_str_or_default(tree, node, "PackedDimension")
+            direction = unwrap_node(node, ["PortDirection"])
+            if direction is not None:
+                direction = tree.get_str(direction).strip()
+            else:
+                direction = ""
+
+            dimension = unwrap_node(node, ["PackedDimension"])
+            if dimension is not None:
+                dimension = tree.get_str(dimension).strip()
+            else:
+                dimension = ""
+
             name = unwrap_node(node, ["PortIdentifier"])
+            name = unwrap_locate(name)
             name = tree.get_str(name)
 
             net_type = unwrap_node(node, ["NetType", "DataType"])
