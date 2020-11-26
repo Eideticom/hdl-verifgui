@@ -7,3 +7,4 @@ psutil
 pyside2
 qtpy
 rSVParser
+pygments

@@ -14,7 +14,7 @@
 from qtpy import QtWidgets, QtGui, QtCore
 import os
 
-from .highlighting import SVHighlighter, YAMLHighlighter
+from .highlighting import Highlighter
 
 
 class Editor(QtWidgets.QWidget):
@@ -121,11 +121,7 @@ class FileTab(QtWidgets.QWidget):
         self.file_text.setText(filename)
 
         suffix = filename.split('.')[-1]
-        if not hasattr(self, "highlighter"):
-            if suffix == "sv" or suffix == "v":
-                self.highlighter = SVHighlighter(self.editor.document())
-            if suffix == "yaml":
-                self.highlighter = YAMLHighlighter(self.editor.document())
+        self.highlighter = Highlighter(self.editor.document(), suffix)
 
         # Only if we are explicitly given a cursor position do we add a marker
         if cursor_position >= 0:
