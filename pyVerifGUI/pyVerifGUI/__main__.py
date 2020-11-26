@@ -11,9 +11,6 @@
 ##############################################################################
 """GUI tool to manage verification"""
 
-__author__ = 'David Lenfesty'
-__copyright__ = 'Copyright (c) 2020. Eideticom Inc. All rights reserved.'
-__license__ = "NA"
 __version__ = "0.1.0"
 
 import sys
