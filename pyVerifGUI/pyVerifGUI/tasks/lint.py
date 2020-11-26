@@ -16,12 +16,12 @@ from qtpy import QtCore
 from pyVerifGUI.parsers import parse_verilator_output
 
 from .runners import LinterWorker
-from .base import Task, TaskFinishedDialog, task_names, TaskFailedDialog
+from .base import Task, is_task, TaskFinishedDialog, task_names, TaskFailedDialog
 
 
+@is_task
 class LintTask(Task):
     _deps = [task_names.parse]
-    _running = False
     _name = task_names.lint
     _description = "SystemVerilog Linter (Verilator)"
 
@@ -50,8 +50,8 @@ class LintTask(Task):
         del name, stdout, stderr, time
         if rc == -42:
             self._running = False
-            self.finished = False
-            self.status = "failed"
+            self._finished = False
+            self._status = "failed"
             self.config.dump_build()
             TaskFailedDialog(
                 "Linter",
@@ -61,8 +61,8 @@ class LintTask(Task):
             return
 
         self._running = False
-        self.finished = True
-        self.status = "passed"
+        self._finished = True
+        self._status = "passed"
         self.log_output.emit("Linting finshed!")
 
         tasks = self.dialog.run("Linting Finished!")

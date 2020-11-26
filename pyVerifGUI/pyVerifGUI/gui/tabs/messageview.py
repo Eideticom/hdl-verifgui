@@ -704,8 +704,9 @@ Waiving reason: {waiver['reason']}
     def shouldLoadMessages(self) -> bool:
         """Determines if messages should be loaded from filesystem or not"""
         if self.config.build is not None:
-            if self.config.status[self.status_name]["finished"]:
-                return True
+            status = self.config.status.get(self.status_name)
+            if status:
+                return status["finished"]
 
         return False
 

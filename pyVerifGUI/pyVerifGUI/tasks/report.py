@@ -13,10 +13,11 @@
 
 from typing import Callable
 
-from .base import Task, task_names
+from .base import Task, is_task, task_names
 from pyVerifGUI.gui.base_tab import Tab
 
 
+@is_task
 class ReportTask(Task):
     _deps = [task_names.lint]
     _running = False
@@ -57,6 +58,6 @@ class ReportTask(Task):
         with open(report, "w") as f:
             f.write(text)
 
-        self.finished = True
-        self.status = "passed"
+        self._finished = True
+        self._status = "passed"
         self.config.dump_build()

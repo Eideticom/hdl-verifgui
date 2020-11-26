@@ -17,10 +17,11 @@ from pathlib import Path
 import shutil
 
 from .runners import SVParseWorker
-from .base import Task, TaskFinishedDialog, task_names, TaskFailedDialog
+from .base import Task, is_task, TaskFinishedDialog, task_names, TaskFailedDialog
 from .lint import LintTask
 
 
+@is_task
 class ParseTask(Task):
     _deps = []
     _running = False
@@ -35,7 +36,7 @@ class ParseTask(Task):
         # Attempt to copy previous build
         if self.copy_dialog.askForCopy():
             self.log_output.emit("RTL copied from previous build")
-            self.finished = True
+            self._finished = True
             self.config.dump_build()
             self.taskFinish()
         else:
@@ -57,15 +58,15 @@ class ParseTask(Task):
             self.log_output.emit("Parsing failed...")
             self._running = False
 
-            self.status = "failed"
-            self.finished = True
+            self._status = "failed"
+            self._finished = True
             self.config.dump_build()
             TaskFailedDialog("Parsing",
                              "Parsing failed! Check command outputs").exec_()
             self.task_result.emit([])
             return
 
-        self.finished = True
+        self._finished = True
         self.taskFinish()
 
     def taskFinish(self):
@@ -73,17 +74,15 @@ class ParseTask(Task):
         dialog = TaskFinishedDialog(self._name)
         tasks = []
 
-        tasks.append(task_names.lint)
         self.log_output.emit("Parsing succeeded!")
         if self.throw_dialog:
             dialog.addNextTask(task_names.lint)
             msg = "Parsing succeeded!"
             tasks.extend(dialog.run(msg))
 
-        self.status = "passed"
-
-        self.task_result.emit(tasks)
+        self._status = "passed"
         self._running = False
+        self.task_result.emit(tasks)
         self.config.dump_build()
 
 

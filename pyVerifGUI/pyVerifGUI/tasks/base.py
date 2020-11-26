@@ -25,6 +25,17 @@ task_names.lint = "Linter"
 task_names.report = "Report"
 
 
+def is_task(cls):
+    """Decorator to explicitly classify an object as a task.
+
+    Using this vs just checking if the task inherits from Task allows you to
+    build base tasks for common functionality. Also allows you to auto-import
+    without pulling in the base task.
+    """
+    cls._is_task = True
+    return cls
+
+
 class Task(QtCore.QObject):
     """Base class to define a task that can be ran, but has other (Task) dependancies"""
 
@@ -37,75 +48,51 @@ class Task(QtCore.QObject):
     task_result = QtCore.Signal(list)
 
     def __init__(self, config):
+        """Do not override __init__! Instead define _post_init"""
         super().__init__()
         self.config = config
+
+        # Default to not throwing any dialog
         self.throw_dialog = False
+        self._running = False
 
-    # I'm not sure if it's better to do this or to just use duck typing
-    # On the one hand, this clearly defines what is required
-    # on the other, this is quite a few extra lines to not really DO anything
-    @property
-    def requirements(self) -> List[str]:
-        """Returns list of requirements to run() this task"""
-        return self._deps
+        # Complete any task-specific init
+        self._post_init()
 
     @property
-    def status(self) -> str:
+    def _status(self) -> str:
         """Returns either "passed" or "failed" """
         try:
             return self.config.status[f"{self._name}"]["status"]
         except KeyError:
             return "failed"
 
-    @status.setter
-    def status(self, status: str):
+    @_status.setter
+    def _status(self, status: str):
         """Updates status"""
         # TODO come up with a way to migrate the two fields into one, that can transition nicely
         self.config.status.update({f"{self._name}": {
-            "finished": self.finished,
+            "finished": self._finished,
             "status": status,
             "time": time.time(),
         }})
 
     @property
-    def finished(self) -> bool:
+    def _finished(self) -> bool:
         """Returns whether Task has finished or not"""
         try:
             return self.config.status[self._name]["finished"]
         except KeyError:
             return False
 
-    @finished.setter
-    def finished(self, status):
+    @_finished.setter
+    def _finished(self, status):
         """Setter for finished status"""
         self.config.status.update({self._name: {
             "finished": status,
-            "status": self.status,
+            "status": self._status,
             "time": time.time(),
         }})
-
-    @property
-    def running(self) -> bool:
-        """Returns if the task is currently running"""
-        return self._running
-
-    @property
-    def name(self) -> str:
-        """Human-readable name for Task"""
-        return self._name
-
-    @property
-    def description(self) -> str:
-        """Short-ish text about task"""
-        return self._description
-
-    def run(self, is_last=True):
-        """Begins running the task
-
-        is_last: whether this Task is the end of a chain,
-                 i.e. do we prompt for tasks to run afterwards?
-        """
-        raise NotImplementedError
 
     def reset(self):
         """Resets state of task. Overrule for more complex behaviour"""
@@ -116,6 +103,46 @@ class Task(QtCore.QObject):
         worker = getattr(self, "worker", None)
         if worker is not None:
             worker.kill(True)
+
+    #### ------
+    # Required implementations
+    def run(self, is_last=True):
+        """Begins running the task.
+
+        This should set running and finished appropriately during the task.
+        Ideally set up some sort of asynchronous operation which uses
+        callbacks and the such (signals and slots do nicely) to set state,
+        especially if it is a long-running task.
+
+        is_last: whether this Task is the end of a chain,
+                 i.e. do we prompt for tasks to run afterwards?
+        """
+        raise NotImplementedError
+
+    ## The below properties can simply be defined as class members.
+    @property
+    @classmethod
+    def _deps(self) -> List[str]:
+        """List of tasks required to have succeeded before this task can run
+
+        Must be class method because it is used prior to instantiation"""
+        raise NotImplementedError
+
+    @property
+    def _name(self) -> str:
+        """Name to present"""
+        raise NotImplementedError
+
+    @property
+    def _description(self) -> str:
+        """Basic description of the task"""
+        raise NotImplementedError
+
+    #### ------
+    # Optional Implementations
+
+    def _post_init(self):
+        """Task-specific initialization"""
 
 
 class TaskFinishedDialog(QtWidgets.QDialog):

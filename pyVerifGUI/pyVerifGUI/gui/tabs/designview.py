@@ -100,11 +100,12 @@ class DesignViewTab(Tab):
     def update(self):
         """Handles updating model or view"""
         if self.config.build is not None:
-            if self.config.status[ParseTask._name]["finished"]:
-                self.updateTree()
-            else:
-                self.removeTree()
-                self.textBrowser.setPlainText("Parsing not completed!")
+            if self.config.status.get(ParseTask._name):
+                if self.config.status[ParseTask._name]["finished"]:
+                    self.updateTree()
+                else:
+                    self.removeTree()
+                    self.textBrowser.setPlainText("Parsing not completed!")
 
     def updateTree(self):
         """Called when new parsed design information is available"""
