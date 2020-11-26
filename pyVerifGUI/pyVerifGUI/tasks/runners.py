@@ -30,10 +30,7 @@ from pyVerifGUI.parsers import parse_verilator_output
 
 def create_rtlfiles_list(top_module, sv_rtl_fileslist_filename, sv_cfg_data):
     if not top_module in sv_cfg_data['sv_hierarchy']:
-        print(
-            f"<ERROR>'{top_module}' not found in hiearchy tree (sv_hierarchy.yaml)"
-        )
-        sys.exit(1)
+        return f"<ERROR> '{top_module}' not found in hiearchy tree (sv_hierarchy.yaml)"
 
     htree = sv_cfg_data['sv_hierarchy'][top_module]['tree']
 
@@ -132,8 +129,10 @@ class SVParseWorker(Worker):
             "sv_packages": packages,
             "sv_interfaces": interfaces,
         }
-        create_rtlfiles_list(config.top_module,
-                             str(config.build_path / "rtlfiles.lst"), sv_cfg)
+        error = create_rtlfiles_list(config.top_module,
+                                  str(config.build_path / "rtlfiles.lst"), sv_cfg)
+        if error:
+            return (-1, "", error)
 
         return (returncode, stdout, stderr.decode())
 
