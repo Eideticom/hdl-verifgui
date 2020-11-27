@@ -39,13 +39,18 @@ def is_task(cls):
 class Task(QtCore.QObject):
     """Base class to define a task that can be ran, but has other (Task) dependancies"""
 
+    # TODO this signal only ends up being used for stderr, should get slightly reworked
     run_results = QtCore.Signal(str, int, str, str, float)
+    # Continuous stdout signalling from a task.
+    # Meant to be connected to a Worker's "result" signal.
     run_stdout = QtCore.Signal(str, str)
+    # Continous log signalling from task. Used for general information.
     log_output = QtCore.Signal(str)
 
-    # Returns a list of Tasks to be run. 0-lenth list =  no tasks to be run.
-    # Status should be polled via finished(), not this signal
-    task_result = QtCore.Signal(list)
+    # Signals task completion and returns results.
+    # Please use the helper functions defined below instead of directly using
+    # this signal.
+    task_result = QtCore.Signal(bool, str, str, list)
 
     def __init__(self, config):
         """Do not override __init__! Instead define _post_init"""
@@ -59,6 +64,20 @@ class Task(QtCore.QObject):
         # Complete any task-specific init
         self._post_init()
 
+    def run(self):
+        """Function to be called by runnerwidget. Handles
+        background status management"""
+        self._finished = False
+        self._running = True
+        self._status = "incomplete"
+
+        # Call implementation
+        self._run()
+
+    #### ------
+    # Status setters/getters.
+    # Ideally an implementation shouldn't touch these unless you're doing
+    # something custom with your states.
     @property
     def _status(self) -> str:
         """Returns either "passed" or "failed" """
@@ -94,19 +113,37 @@ class Task(QtCore.QObject):
             "time": time.time(),
         }})
 
-    def reset(self):
-        """Resets state of task. Overrule for more complex behaviour"""
-        self.finished = False
+    #### ------
+    # Helper functions
+    def emit_result(self, status: bool, msg: str, post_tasks: list):
+        """Use this function instead of directly managing the signal, task names
+        always need to match.
 
-    def kill(self):
-        """Default safe implementation of kill"""
-        worker = getattr(self, "worker", None)
-        if worker is not None:
-            worker.kill(True)
+        Also handles behind-the s
+        """
+        # Whether the task finished *successfully*.
+        # XXX should get wrapped into status with passed/failed/incomplete
+        self._finished = status
+        self._running = False
+
+        if status:
+            self._status = "passed"
+        else:
+            self._status = "failed"
+
+        self.task_result.emit(status, self._name, msg, post_tasks)
+
+    def fail(self, msg: str):
+        """Convenience function for a single call on failure"""
+        self.emit_result(False, msg, [])
+
+    def succeed(self, msg: str, post_tasks: list):
+        """Convenience function for a single call on success"""
+        self.emit_result(True, msg, post_tasks)
 
     #### ------
     # Required implementations
-    def run(self, is_last=True):
+    def _run(self, is_last=True):
         """Begins running the task.
 
         This should set running and finished appropriately during the task.
@@ -144,6 +181,19 @@ class Task(QtCore.QObject):
     def _post_init(self):
         """Task-specific initialization"""
 
+    def reset(self):
+        """Resets state of task. Overrule for more complex behaviour"""
+        self._finished = False
+
+    def kill(self):
+        """Default safe implementation of kill"""
+        worker = getattr(self, "worker", None)
+        if worker is not None:
+            worker.kill(True)
+
+
+# TODO make both dialogs use the same interface (there's a word for this
+#      beginning in C that I can't think of)
 
 class TaskFinishedDialog(QtWidgets.QDialog):
     """Template for a common dialog to popup on task completion"""

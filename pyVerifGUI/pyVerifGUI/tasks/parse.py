@@ -28,16 +28,13 @@ class ParseTask(Task):
     _name = task_names.parse
     _description = "SystemVerilog Design Parser (pySVparser)"
 
-    def run(self, is_last=True):
+    def _run(self):
         """Run parser task"""
-        self.throw_dialog = is_last
         self.copy_dialog = CopyOutputsDialog(self.config)
 
         # Attempt to copy previous build
         if self.copy_dialog.askForCopy():
-            self.log_output.emit("RTL copied from previous build")
-            self._finished = True
-            self.config.dump_build()
+            self.log_output.emit("RTL copied from previous build...")
             self.taskFinish()
         else:
             self.worker = SVParseWorker(self._name, self.config)
@@ -56,34 +53,15 @@ class ParseTask(Task):
         del tag, stdout, time
         if rc != 0:
             self.log_output.emit("Parsing failed...")
-            self._running = False
-
-            self._status = "failed"
-            self._finished = True
-            self.config.dump_build()
-            TaskFailedDialog("Parsing",
-                             "Parsing failed! Check command outputs").exec_()
-            self.task_result.emit([])
+            self.fail("Parsing failed! Check command outputs")
             return
 
-        self._finished = True
         self.taskFinish()
 
     def taskFinish(self):
         """Cleanup"""
-        dialog = TaskFinishedDialog(self._name)
-        tasks = []
-
         self.log_output.emit("Parsing succeeded!")
-        if self.throw_dialog:
-            dialog.addNextTask(task_names.lint)
-            msg = "Parsing succeeded!"
-            tasks.extend(dialog.run(msg))
-
-        self._status = "passed"
-        self._running = False
-        self.task_result.emit(tasks)
-        self.config.dump_build()
+        self.succeed("Parsing succeeded!", [task_names.lint])
 
 
 class CopyOutputsDialog(QtWidgets.QDialog):

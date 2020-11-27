@@ -12,7 +12,7 @@
 ##############################################################################
 from importlib import import_module
 from qtpy import QtCore, QtWidgets
-from pyVerifGUI.tasks import (Task, implemented_tasks,
+from pyVerifGUI.tasks import (Task, implemented_tasks, TaskFailedDialog,
                               TaskFinishedDialog, task_names)
 from collections import namedtuple, deque
 from functools import partial
@@ -131,10 +131,13 @@ class RunnerGUI(QtWidgets.QWidget):
         # Instantiate
         task = task(self.config)
 
+        # Create widgets
         row = self.layout.rowCount()
         label = QtWidgets.QLabel(task._description, self)
         button = QtWidgets.QPushButton(task._name, self)
         button.setEnabled(False)
+
+        # Add to list of tasks
         self.tasks.append(self.TaskInfo(task, label, button))
 
         # Add to layout
@@ -143,10 +146,11 @@ class RunnerGUI(QtWidgets.QWidget):
 
         # Manage signals
         task.run_results.connect(self.run_results)
-        task.run_stdout.connect(self.run_stdout)
+        task.run_stdout.connect(self.run_stdout.emit)
         task.log_output.connect(self.log_output)
-        task.task_result.connect(self.runTask)
+        task.task_result.connect(self.handleTaskCompletion)
 
+        # I *knew* I missed some coverage code
         # Not all tasks have these signals
         try:
             task.run_began.connect(self.run_began)
@@ -217,7 +221,7 @@ class RunnerGUI(QtWidgets.QWidget):
         """Handles button press, starts the task running"""
         try:
             self.prepareTask(task)
-            self.runTask([])
+            self.runNextTask()
         except TaskFailedError as exc:
             QtWidgets.QMessageBox.information(self, "Dependancy Failed!",
                                               f"{exc.task} failed, please correct issues and re-run.")
@@ -237,7 +241,7 @@ class RunnerGUI(QtWidgets.QWidget):
             for task_name in tasks:
                 self.prepareTask(self.getTask(task_name))
 
-            self.runTask([])
+            self.runNextTask()
 
     def updateButtons(self):
         """Updates button status"""
@@ -279,14 +283,30 @@ class RunnerGUI(QtWidgets.QWidget):
             if not self.getTask(req)._finished:
                 return task._name
 
-    def runTask(self, to_run: list):
-        """Runs a task, appending to_run to the task queue"""
-        # Emit a signal to update display
-        self.task_finished.emit()
-        # Adds follow-on tasks to run list
-        for task in to_run:
-            self.run_list.append(task)
+    def handleTaskCompletion(self, status: bool, task_name: str, msg: str, post_tasks: list):
+        """Handles task completion, running the next task or showing
+        completion dialog.
+        """
+        # Save status information
+        self.config.dump_build()
 
+        # Only throw dialogs if this is the last task
+        if len(self.run_list) == 0:
+            if status:
+                dialog = TaskFinishedDialog(task_name)
+                for task in post_tasks:
+                    dialog.addNextTask(task)
+                self.run_list.extend(dialog.run(msg))
+            else:
+                dialog = TaskFailedDialog(task_name, msg)
+                dialog.exec_()
+
+        self.runNextTask()
+        self.task_finished.emit()
+
+
+    def runNextTask(self):
+        """Runs the next task in the queue"""
         # Launch next task in list if we have more to run
         if len(self.run_list) > 0:
             next_name = self.run_list.popleft()
@@ -294,18 +314,12 @@ class RunnerGUI(QtWidgets.QWidget):
             if next_task is None:
                 raise InvalidTaskError(next_name)
 
-            # No more items in queue, item is last
-            if len(self.run_list) == 0:
-                is_last = True
-            else:
-                is_last = False
-
             # Only run if it hasn't been run already
             if not next_task._finished and not next_task._running:
-                next_task.run(is_last=is_last)
+                next_task.run()
                 self.task_is_running = True
             else:
                 if not self.task_is_running:
-                    self.runTask([])
+                    self.runNextTask()
 
         self.updateButtons()
