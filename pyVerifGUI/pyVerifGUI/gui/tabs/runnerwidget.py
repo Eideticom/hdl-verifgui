@@ -298,8 +298,8 @@ class RunnerGUI(QtWidgets.QWidget):
                     dialog.addNextTask(task)
                 self.run_list.extend(dialog.run(msg))
             else:
-                dialog = TaskFailedDialog(task_name, msg)
-                dialog.exec_()
+                dialog = TaskFailedDialog(task_name)
+                dialog.run(msg)
 
         self.runNextTask()
         self.task_finished.emit()

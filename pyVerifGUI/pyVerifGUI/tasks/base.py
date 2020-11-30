@@ -192,9 +192,6 @@ class Task(QtCore.QObject):
             worker.kill(True)
 
 
-# TODO make both dialogs use the same interface (there's a word for this
-#      beginning in C that I can't think of)
-
 class TaskFinishedDialog(QtWidgets.QDialog):
     """Template for a common dialog to popup on task completion"""
 
@@ -260,10 +257,13 @@ class TaskFailedDialog(QtWidgets.QDialog):
         self.layout = QtWidgets.QVBoxLayout(self)
 
         self.msg = QtWidgets.QLabel(self)
-        self.msg.setText(message)
         self.button_box = QtWidgets.QDialogButtonBox(self)
         self.button_box.addButton(self.button_box.Ok)
         self.layout.addWidget(self.msg)
         self.layout.addWidget(self.button_box)
 
         self.button_box.accepted.connect(self.accept)
+
+    def run(self, msg: str):
+        self.msg.setText(msg)
+        self.exec_()

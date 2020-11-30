@@ -14,9 +14,11 @@
 from qtpy import QtCore
 
 from pyVerifGUI.parsers import parse_verilator_output
+from pyVerifGUI.gui.config import Config
 
-from .runners import LinterWorker
-from .base import Task, is_task, TaskFinishedDialog, task_names, TaskFailedDialog
+from .base import Task, is_task, task_names
+from .worker import Worker
+from .parse import get_extra_args
 
 
 @is_task
@@ -24,11 +26,6 @@ class LintTask(Task):
     _deps = [task_names.parse]
     _name = task_names.lint
     _description = "SystemVerilog Linter (Verilator)"
-
-    def __init__(self, config):
-        super().__init__(config)
-
-        self.dialog = TaskFinishedDialog(self._name)
 
     def _run(self):
         """Runs linter task"""
@@ -52,3 +49,54 @@ class LintTask(Task):
 
         self.log_output.emit("Linting finshed!")
         self.succeed("Linting Finished!", [])
+
+class LinterWorker(Worker):
+    def fn(self, stdout, config: Config):
+        """Run verilator as a linter and save the parsed output into the build
+        directory.
+        """
+        del stdout
+
+        if os.name == 'nt':
+            verilator_exe = "verilator.exe"
+        else:
+            verilator_exe = "verilator"
+
+        self.cmd_list = [verilator_exe, "--lint-only", "-Wall", "--top-module",
+                         config.top_module, "-f", f"{config.build_path.resolve()}/rtlfiles.lst"]
+
+        opts = config.config.get("verilator_args", None)
+        self.cmd_list.extend(get_extra_args(opts))
+        self.display_cmd()
+
+        # can only be run after parsing has finished
+        try:
+            self.popen = sp.Popen(self.cmd_list,
+                                  stdout=sp.PIPE,
+                                  stderr=sp.PIPE,
+                                  cwd=config.working_dir_path)
+        except Exception as exc:
+            return (-42, "", str(exc))
+
+        stdout, stderr = self.popen.communicate()
+        stderr = stderr.decode()
+        returncode = self.popen.wait()
+        message_text = stderr
+
+        # Parse verilator output to build list of messages
+        messages, errors = parse_verilator_output(message_text)
+        if messages is None:
+            return (-42, "", message_text)
+
+        # Write messages to YAML storage file
+        messages_path = config.build_path / "linter_messages.yaml"
+        dump(messages, open(messages_path, "w"))
+
+        errors_path = config.build_path / "linter_errors.yaml"
+        if errors:
+            dump(errors, open(errors_path, "w"))
+        else:
+            if errors_path.exists():
+                os.remove(str(errors_path))
+
+        return (returncode, stdout.decode(), stderr)

@@ -12,13 +12,16 @@
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets
+from typing import Union, List
 from oyaml import safe_load
 from pathlib import Path
+import subprocess as sp
 import shutil
 
-from .runners import SVParseWorker
-from .base import Task, is_task, TaskFinishedDialog, task_names, TaskFailedDialog
-from .lint import LintTask
+from .base import Task, is_task, task_names
+from .worker import Worker
+
+from pyVerifGUI.gui.config import Config
 
 
 @is_task
@@ -62,6 +65,116 @@ class ParseTask(Task):
         """Cleanup"""
         self.log_output.emit("Parsing succeeded!")
         self.succeed("Parsing succeeded!", [task_names.lint])
+
+
+def create_rtlfiles_list(top_module, sv_rtl_fileslist_filename, sv_cfg_data):
+    if not top_module in sv_cfg_data['sv_hierarchy']:
+        return f"<ERROR> '{top_module}' not found in hiearchy tree (sv_hierarchy.yaml)"
+
+    htree = sv_cfg_data['sv_hierarchy'][top_module]['tree']
+
+    def get_modules(blk_dict: dict):
+        modules = list(blk_dict.keys())
+        for branch in blk_dict.values():
+            modules.extend(get_modules(branch))
+
+        return modules
+
+    modules = get_modules(htree)
+    files_lst = []
+    for pkg_data in sv_cfg_data['sv_packages'].values():
+        if pkg_data['path'] not in files_lst:
+            files_lst.append(pkg_data['path'])
+
+    for if_data in sv_cfg_data['sv_interfaces'].values():
+        if if_data['path'] not in files_lst:
+            files_lst.append(if_data['path'])
+
+    for mdl_name in modules:
+        try:
+            mdl = sv_cfg_data['sv_modules'][mdl_name]
+            if mdl['path'] not in files_lst:
+                files_lst.append(mdl['path'])
+        except KeyError:
+            # This happens when external modules are used, such as FPGA intrinsics
+            pass
+
+    posix_pathlst = [Path(path).as_posix() for path in files_lst]
+    with Path(sv_rtl_fileslist_filename).open('w') as fptr:
+        fptr.write("\n".join(posix_pathlst))
+
+
+def get_extra_args(args: Union[str, None]) -> List:
+    """Pares out extra args and add to a string"""
+    if args is not None:
+        args = args.strip()
+        if args:
+            return args.strip().split(" ")
+
+    return []
+
+
+class SVParseWorker(Worker):
+    def fn(self, stdout, config: Config):
+        """Run the SystemVerilog parser and save its output to the build
+        directory
+        """
+        # Check if rSVParser exists first
+        try:
+            thing = sp.run(["rSVParser", "-h"], capture_output=True)
+            self.cmd_list = ["rSVParser"]
+        except FileNotFoundError:
+            return (
+                -1, "",
+                "rSVParser not found! Please ensure it is installed and in your PATH."
+            )
+
+        self.cmd_list = ["rSVParser", config.top_module, "--top_module"]
+        for path in config.rtl_dir_paths:
+            self.cmd_list.extend(["--include", str(path)])
+
+        parse_args = config.config.get("parse_args", None)
+        self.cmd_list.extend(get_extra_args(parse_args))
+        self.display_cmd()
+
+        try:
+            self.popen = sp.Popen(self.cmd_list,
+                                  stdout=sp.PIPE,
+                                  stderr=sp.PIPE,
+                                  cwd=config.working_dir_path)
+        except Exception as exc:
+            return (-1, "", str(exc))
+        returncode, stdout = self.emit_stdout("parser")
+        _, stderr = self.popen.communicate()
+
+        if returncode != 0:
+            # Necessary, because when the parser fails, the required files often do not exist
+            return (returncode, stdout, stderr.decode())
+
+        # Copy output to build directory
+        working_parse_path = config.build_path / f"sv_{config.top_module}"
+
+        # Generate list of files for linter to use
+        modules = safe_load(open(str(working_parse_path / "sv_modules.yaml")))
+        hierarchy = safe_load(
+            open(str(working_parse_path / "sv_hierarchy.yaml")))
+        packages = safe_load(open(str(working_parse_path /
+                                      "sv_packages.yaml")))
+        interfaces = safe_load(
+            open(str(working_parse_path / "sv_interfaces.yaml")))
+        sv_cfg = {
+            "sv_modules": modules,
+            "sv_hierarchy": hierarchy,
+            "sv_packages": packages,
+            "sv_interfaces": interfaces,
+        }
+        error = create_rtlfiles_list(config.top_module,
+                                  str(config.build_path / "rtlfiles.lst"), sv_cfg)
+        if error:
+            return (-1, "", error)
+
+        return (returncode, stdout, stderr.decode())
+
 
 
 class CopyOutputsDialog(QtWidgets.QDialog):

@@ -11,7 +11,7 @@
 # @brief Tasks that the GUI can run
 ##############################################################################
 
-from .base import Task, is_task, task_names, TaskFinishedDialog
+from .base import Task, is_task, task_names, TaskFinishedDialog, TaskFailedDialog
 
 from pathlib import Path
 from importlib import import_module
