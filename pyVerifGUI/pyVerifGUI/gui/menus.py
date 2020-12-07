@@ -16,7 +16,7 @@ from pathlib import Path
 import subprocess as sp
 import shutil
 
-from pyVerifGUI.tasks import task_names
+from pyVerifGUI.tasks.base import task_names
 
 
 class FileMenu(QtWidgets.QMenu):

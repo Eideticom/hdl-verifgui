@@ -11,14 +11,17 @@
 # @brief Verilator linting task
 ##############################################################################
 
+import subprocess as sp
 from qtpy import QtCore
+from oyaml import dump
+import os
 
 from pyVerifGUI.parsers import parse_verilator_output
 from pyVerifGUI.gui.config import Config
 
-from .base import Task, is_task, task_names
-from .worker import Worker
-from .parse import get_extra_args
+from pyVerifGUI.tasks.base import Task, is_task, task_names
+from pyVerifGUI.tasks.worker import Worker
+from pyVerifGUI.tasks.parse import get_extra_args
 
 
 @is_task

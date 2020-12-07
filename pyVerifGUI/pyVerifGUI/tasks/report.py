@@ -13,7 +13,7 @@
 
 from typing import Callable
 
-from .base import Task, is_task, task_names
+from pyVerifGUI.tasks.base import Task, is_task, task_names
 from pyVerifGUI.gui.base_tab import Tab
 
 

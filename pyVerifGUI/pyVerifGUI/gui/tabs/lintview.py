@@ -22,7 +22,7 @@ from pyVerifGUI.gui.models import LintMessageModel, DiffLintMessageModel, Messag
 from pyVerifGUI.gui.base_tab import is_tab
 from pyVerifGUI.tasks.lint import LintTask
 
-from .messageview import MessageViewTab
+from pyVerifGUI.gui.tabs.messageview import MessageViewTab
 
 
 @is_tab

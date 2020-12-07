@@ -12,12 +12,17 @@
 ##############################################################################
 from importlib import import_module
 from qtpy import QtCore, QtWidgets
-from pyVerifGUI.tasks import (Task, implemented_tasks, TaskFailedDialog,
-                              TaskFinishedDialog, task_names)
 from collections import namedtuple, deque
 from functools import partial
+from pathlib import Path
+from typing import List
+import inspect
 import os
 
+from pyVerifGUI.tasks.base import (Task, TaskFailedDialog,
+                              TaskFinishedDialog, task_names)
+from pyVerifGUI.plugin_utils import import_plugins
+import pyVerifGUI.tasks
 
 class InvalidTaskError(Exception):
     """Exception raised when a task is not added to the list of tasks"""
@@ -32,7 +37,7 @@ class TaskFailedError(Exception):
         self.message = f"{task_name} failed!"
 
 
-class RunnerGUI(QtWidgets.QWidget):
+class Runner(QtWidgets.QWidget):
 
     run_results = QtCore.Signal(str, int, str, str, float)
     run_stdout = QtCore.Signal(str, str)
@@ -47,7 +52,7 @@ class RunnerGUI(QtWidgets.QWidget):
     # "Internal" signal for killing tests
     kill_test = QtCore.Signal(str)
 
-    def __init__(self, parent, config):
+    def __init__(self, parent, config, task_folders: List):
         super().__init__(parent)
 
         self.config = config
@@ -78,14 +83,17 @@ class RunnerGUI(QtWidgets.QWidget):
         self.run_list = deque([])
         self.task_is_running = False  # needed to not launch extra tasks when something is running
 
-        tasks = []
-        for task in implemented_tasks:
-            if task not in tasks:
+        used_tasks = []
+        plugin_dirs = [Path(inspect.getfile(pyVerifGUI.tasks)).resolve().parent]
+        plugin_dirs.extend([Path(path) for path in task_folders])
+        self.task_plugins = import_plugins(plugin_dirs, lambda obj: getattr(obj, "_is_task", False))
+        for task in self.task_plugins:
+            if task not in used_tasks:
                 new_tasks = self.taskSort(task)
-                tasks.extend([task for task in new_tasks if task not in tasks])
+                used_tasks.extend([task for task in new_tasks if task not in used_tasks])
 
         # Sort tasks by dependancies
-        for task in tasks:
+        for task in used_tasks:
             self.addTask(task)
 
         # Little dialog to open if we haven't done anything in a build yet
@@ -97,7 +105,7 @@ class RunnerGUI(QtWidgets.QWidget):
         """Sorts task by dependancies"""
         tasks = []
         for dep in task._deps:
-            dep = next((task for task in implemented_tasks if task._name == dep))
+            dep = next((task for task in self.task_plugins if task._name == dep))
             tasks.append(dep)
 
         tasks.append(task)

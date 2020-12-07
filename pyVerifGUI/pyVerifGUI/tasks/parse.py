@@ -18,8 +18,8 @@ from pathlib import Path
 import subprocess as sp
 import shutil
 
-from .base import Task, is_task, task_names
-from .worker import Worker
+from pyVerifGUI.tasks.base import Task, is_task, task_names
+from pyVerifGUI.tasks.worker import Worker
 
 from pyVerifGUI.gui.config import Config
 

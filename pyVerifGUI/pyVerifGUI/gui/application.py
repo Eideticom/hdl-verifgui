@@ -18,10 +18,12 @@ from datetime import datetime
 from pathlib import Path
 import subprocess as sp
 from argparse import Namespace
-from typing import Callable
+from typing import Callable, List
+import inspect
 
-from pyVerifGUI.tasks import task_names
-from pyVerifGUI.gui.tabs import implemented_tabs
+from pyVerifGUI.plugin_utils import import_plugins
+from pyVerifGUI.tasks.base import task_names
+import pyVerifGUI.gui.tabs
 
 from .config import Config
 from .menus import FileMenu, ViewMenu, HelpMenu
@@ -60,7 +62,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         # Set up tab widget with overview tab to start
         self.tabWidget = QtWidgets.QTabWidget(self.central_widget)
         self.tabWidget.setObjectName("tabWidget")
-        self.overview_tab = OverviewTab(self, self.config)
+        self.overview_tab = OverviewTab(self, self.config, arguments.tasks)
         self.tabWidget.addTab(self.overview_tab, "Overview")
         #### Progress bar widget
         self.progress_widget = ProgressBar(self.central_widget)
@@ -106,7 +108,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
         # Add extra tabs
         # Must be done after logger is setup so we can hook them into the logger
-        self.addTabs()
+        self.addTabs(arguments.tabs)
         # Start with first tab (overview) open
         self.tabWidget.setCurrentIndex(0)
 
@@ -169,10 +171,13 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.verifyTabs()
         self.globalUpdate.emit()
 
-    def addTabs(self):
+    def addTabs(self, extra_plugin_dirs: List):
         """Adds all of the tabs"""
         # Instantiate every tab
-        self.tabs = [tab(self.tabWidget, self.config) for tab in implemented_tabs]
+        plugin_dirs = [Path(inspect.getfile(pyVerifGUI.gui.tabs)).resolve().parent]
+        plugin_dirs.extend([Path(dir) for dir in extra_plugin_dirs])
+        self.tabs = import_plugins(plugin_dirs, lambda obj: getattr(obj, "_is_tab", False))
+        self.tabs = [tab(self.tabWidget, self.config) for tab in self.tabs]
         # Sort by provided placement index
         self.tabs.sort(key=lambda tab: tab._placement)
 
