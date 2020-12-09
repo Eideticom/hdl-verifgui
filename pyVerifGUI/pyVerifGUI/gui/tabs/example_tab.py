@@ -3,7 +3,7 @@ from qtpy import QtWidgets
 
 from pyVerifGUI.gui.base_tab import Tab, is_tab
 
-#@is_tab
+@is_tab
 class MyTab(Tab):
     _placement = 9
     _name = "mytab"

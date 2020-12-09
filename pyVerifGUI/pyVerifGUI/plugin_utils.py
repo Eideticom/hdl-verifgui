@@ -13,10 +13,30 @@
 from typing import Callable, Any, List
 from types import ModuleType
 from pathlib import Path
+import importlib
 import inspect
+import sys
 import os
 
-def import_plugins(directories: List[os.PathLike], verify: Callable[[Any], bool]) -> List:
+def _import_file(path: Path, existing_modules: List[str], verify: Callable):
+    """Local file importing function. Used for DRY, don't use externally"""
+
+    if path.name == "__init__.py" or path.suffix != ".py":
+        return None
+
+    if path.stem in existing_modules:
+        print(f"ERROR - plugin found at {path} has a conflicting name")
+        sys.exit(1)
+
+    if path.stem in sys.modules:
+        del sys.modules[path.stem]
+
+    mod = importlib.import_module(path.stem)
+    for cls in inspect.getmembers(mod, inspect.isclass):
+        if verify(cls[1]):
+            return cls[1], cls[0]
+
+def import_plugins(paths: List[os.PathLike], verify: Callable[[Any], bool]) -> List:
     """Imports objects from all python files in the given directories. Then
     uses verify to filter to the valid plugin objects.
 
@@ -25,23 +45,28 @@ def import_plugins(directories: List[os.PathLike], verify: Callable[[Any], bool]
     plugins = []
     plugin_names = []
 
-    directories = [Path(path) for path in directories]
-    for dir in directories:
-        if dir.is_dir():
-            for module in dir.iterdir():
-                if module.name == "__init__.py" or module.suffix != ".py":
-                    continue
+    existing_modules = list(sys.modules.keys())
 
-                # I *would* use importlib, but that opens issues with
-                # prior imports and can mess with importing things properly.
-                mod = ModuleType(module.name)
-                mod.__file__ = str(module.resolve())
-                incoming_file = open(str(module)).read()
-                exec(incoming_file, mod.__dict__)
-                for cls in inspect.getmembers(mod, inspect.isclass):
-                    if verify(cls[1]):
-                        if cls[0] not in plugin_names:
-                            plugins.append(cls[1])
-                            plugin_names.append(cls[0])
+    paths = [Path(path) for path in paths]
+    for path in paths:
+        if path.is_dir():
+
+            sys.path.append(str(path))
+
+            for module in path.iterdir():
+                mod= _import_file(module, existing_modules, verify)
+                if mod is not None and mod[1] not in plugin_names:
+                    plugins.append(mod[0])
+                    plugin_names.append(mod[1])
+
+            sys.path.pop()
+
+        elif path.is_file():
+            sys.path.append(str(path.parent))
+            mod = _import_file(path, existing_modules, verify)
+            if mod is not None and mod[1] not in plugin_names:
+                plugins.append(mod[0])
+                plugin_names.append(mod[1])
+            sys.path.pop()
 
     return plugins
