@@ -14,7 +14,7 @@
 
 from qtpy import QtWidgets, QtCore
 
-from typing import Union, Tuple
+from typing import Optional, Tuple
 from pathlib import Path
 import sys
 import os
@@ -70,7 +70,7 @@ class Tab(QtWidgets.QWidget):
 
     #### ------
     # Functions the plugin or whatever needs to define for common functionality
-    def _post_init(self) -> Union[None, str]:
+    def _post_init(self) -> Optional[str]:
         """To be implemented by the new tab, must operate completely based on config
 
         Returns:

@@ -12,7 +12,7 @@
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets
-from typing import Union, List
+from typing import Optional, List
 from oyaml import safe_load
 from pathlib import Path
 import subprocess as sp
@@ -104,7 +104,7 @@ def create_rtlfiles_list(top_module, sv_rtl_fileslist_filename, sv_cfg_data):
         fptr.write("\n".join(posix_pathlst))
 
 
-def get_extra_args(args: Union[str, None]) -> List:
+def get_extra_args(args: Optional[str]) -> List:
     """Pares out extra args and add to a string"""
     if args is not None:
         args = args.strip()
