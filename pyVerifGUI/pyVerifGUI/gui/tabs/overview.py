@@ -12,32 +12,34 @@
 ##############################################################################
 
 from qtpy import QtCore, QtWidgets
-from oyaml import dump
-import subprocess as sp
-import pyparsing as pp
 from pathlib import Path
+import subprocess as sp
+from typing import List
+import pyparsing as pp
+from oyaml import dump
 import shutil
 import os
 
-from pyVerifGUI.gui.tabs.runnerwidget import RunnerGUI as NewRunnerGUI
+from pyVerifGUI.gui.tabs.runnerwidget import Runner
 from pyVerifGUI.gui.editor import Editor
 from pyVerifGUI.gui.config_editor import ConfigEditorDialog
 
 
+# This is not defined with the rest because it's its own special thing.
+# The overview should always be displayed.
 class OverviewTab(QtWidgets.QWidget):
     """Provides an overview of the current status.
 
     Allows you to run jobs for builds and view what is finished.
     """
-    def __init__(self, parent, config):
+    def __init__(self, parent, config, task_folders: List):
         super().__init__(parent)
         self.config = config
 
         self.main_layout = QtWidgets.QGridLayout(self)
         self.main_layout.setObjectName("main_layout")
         self.config_widget = QtWidgets.QWidget(self)
-        #self.runner = RunnerGUI(self, config)
-        self.runner = NewRunnerGUI(self, config)
+        self.runner = Runner(self, config, task_folders)
         self.main_layout.addWidget(self.config_widget)
         self.setLayout(self.main_layout)
         self.config_layout = QtWidgets.QGridLayout(self.config_widget)

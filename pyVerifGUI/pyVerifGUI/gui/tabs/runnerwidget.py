@@ -10,13 +10,19 @@
 #
 # @brief Sub-widget for overview than handles running tasks
 ##############################################################################
+from importlib import import_module
 from qtpy import QtCore, QtWidgets
-from pyVerifGUI.tasks import (Task, ParseTask, LintTask, ReportTask,
-                              TaskFinishedDialog, task_names)
 from collections import namedtuple, deque
 from functools import partial
+from pathlib import Path
+from typing import List
+import inspect
 import os
 
+from pyVerifGUI.tasks.base import (Task, TaskFailedDialog,
+                              TaskFinishedDialog, task_names)
+from pyVerifGUI.plugin_utils import import_plugins
+import pyVerifGUI.tasks
 
 class InvalidTaskError(Exception):
     """Exception raised when a task is not added to the list of tasks"""
@@ -31,7 +37,7 @@ class TaskFailedError(Exception):
         self.message = f"{task_name} failed!"
 
 
-class RunnerGUI(QtWidgets.QWidget):
+class Runner(QtWidgets.QWidget):
 
     run_results = QtCore.Signal(str, int, str, str, float)
     run_stdout = QtCore.Signal(str, str)
@@ -46,7 +52,7 @@ class RunnerGUI(QtWidgets.QWidget):
     # "Internal" signal for killing tests
     kill_test = QtCore.Signal(str)
 
-    def __init__(self, parent, config):
+    def __init__(self, parent, config, task_folders: List):
         super().__init__(parent)
 
         self.config = config
@@ -77,19 +83,39 @@ class RunnerGUI(QtWidgets.QWidget):
         self.run_list = deque([])
         self.task_is_running = False  # needed to not launch extra tasks when something is running
 
-        self.addTask(ParseTask(self.config))
-        self.addTask(LintTask(self.config))
-        self.addTask(ReportTask(self.config))
+        used_tasks = []
+        plugin_dirs = [Path(inspect.getfile(pyVerifGUI.tasks)).resolve().parent]
+        plugin_dirs.extend([Path(path) for path in task_folders])
+        self.task_plugins = import_plugins(plugin_dirs, lambda obj: getattr(obj, "_is_task", False))
+        for task in self.task_plugins:
+            if task not in used_tasks:
+                new_tasks = self.taskSort(task)
+                used_tasks.extend([task for task in new_tasks if task not in used_tasks])
+
+        # Sort tasks by dependancies
+        for task in used_tasks:
+            self.addTask(task)
 
         # Little dialog to open if we haven't done anything in a build yet
         self.new_build_dialog = TaskFinishedDialog("New Build Opening")
         self.new_build_dialog.addNextTask(task_names.parse)
         self.new_build_dialog.addNextTask(task_names.lint)
 
+    def taskSort(self, task):
+        """Sorts task by dependancies"""
+        tasks = []
+        for dep in task._deps:
+            dep = next((task for task in self.task_plugins if task._name == dep))
+            tasks.append(dep)
+
+        tasks.append(task)
+
+        return tasks
+
     def killAllTasks(self):
         """Kills all running tasks"""
         for task in self.tasks:
-            if task.task.running:
+            if task.task._running:
                 try:
                     task.task.kill()
                 except:
@@ -110,10 +136,16 @@ class RunnerGUI(QtWidgets.QWidget):
 
     def addTask(self, task: Task):
         """Adds a task, along with associated buttons and signals to widget"""
+        # Instantiate
+        task = task(self.config)
+
+        # Create widgets
         row = self.layout.rowCount()
-        label = QtWidgets.QLabel(task.description, self)
-        button = QtWidgets.QPushButton(task.name, self)
+        label = QtWidgets.QLabel(task._description, self)
+        button = QtWidgets.QPushButton(task._name, self)
         button.setEnabled(False)
+
+        # Add to list of tasks
         self.tasks.append(self.TaskInfo(task, label, button))
 
         # Add to layout
@@ -122,10 +154,11 @@ class RunnerGUI(QtWidgets.QWidget):
 
         # Manage signals
         task.run_results.connect(self.run_results)
-        task.run_stdout.connect(self.run_stdout)
+        task.run_stdout.connect(self.run_stdout.emit)
         task.log_output.connect(self.log_output)
-        task.task_result.connect(self.runTask)
+        task.task_result.connect(self.handleTaskCompletion)
 
+        # I *knew* I missed some coverage code
         # Not all tasks have these signals
         try:
             task.run_began.connect(self.run_began)
@@ -142,18 +175,26 @@ class RunnerGUI(QtWidgets.QWidget):
         except AttributeError:
             pass
 
+        # Ensure task exists in status
+        if not self.config.status.get(task._name):
+            self.config.status.update({
+                task._name: {
+                    "finished": False,
+                }
+            })
+
         button.clicked.connect(partial(self.handleButtonPress, task))
 
     def handleButtonPress(self, task: Task):
         """Handles pressing the "management" button. Starts, kills or resets the task"""
-        if task.finished:
+        if task._finished:
             task.reset()
-        elif task.running:
+        elif task._running:
             try:
                 task.kill()
-                self.log_output.emit(f"Task {task.name} killed.")
+                self.log_output.emit(f"Task {task._name} killed.")
             except AttributeError:
-                self.log_output.emit(f"Task {task.name} could not be killed!")
+                self.log_output.emit(f"Task {task._name} could not be killed!")
         else:
             self.startTask(task)
 
@@ -163,32 +204,32 @@ class RunnerGUI(QtWidgets.QWidget):
         """Resets compilation status"""
         self.log_output.emit("Resetting old compilations.")
         for task in self.compilation_tasks:
-            task.finished = False
+            task._finished = False
 
         self.config.dump_build()
 
     def prepareTask(self, task: Task):
         """Adds task's required tasks to run list, as well as the task"""
-        for req in task.requirements:
+        for req in task._deps:
             req_task = self.getTask(req)
             if req_task is None:
                 raise InvalidTaskError(req)
 
-            if not req_task.finished:
+            if not req_task._finished:
                 # Adds ALL dependancies to run list
                 self.prepareTask(req_task)
 
-            if req_task.status == "killed" or req_task.status == "failed":
+            if req_task._status == "killed" or req_task._status == "failed":
                 raise TaskFailedError(req_task._name)
 
         # add task to list
-        self.run_list.append(task.name)
+        self.run_list.append(task._name)
 
     def startTask(self, task: Task):
         """Handles button press, starts the task running"""
         try:
             self.prepareTask(task)
-            self.runTask([])
+            self.runNextTask()
         except TaskFailedError as exc:
             QtWidgets.QMessageBox.information(self, "Dependancy Failed!",
                                               f"{exc.task} failed, please correct issues and re-run.")
@@ -199,7 +240,7 @@ class RunnerGUI(QtWidgets.QWidget):
         if self.config.new_build:
             # TODO find a better place for this config status dump
             for task in self.tasks:
-                task.task.finished = False
+                task.task._finished = False
             self.config.dump_build()
             tasks = self.new_build_dialog.run(
                 "New task opened! Select the task you want to run until.")
@@ -208,7 +249,7 @@ class RunnerGUI(QtWidgets.QWidget):
             for task_name in tasks:
                 self.prepareTask(self.getTask(task_name))
 
-            self.runTask([])
+            self.runNextTask()
 
     def updateButtons(self):
         """Updates button status"""
@@ -220,44 +261,60 @@ class RunnerGUI(QtWidgets.QWidget):
                 task.button.setStyleSheet("background-color: red")
             else:
                 task.button.setEnabled(True)
-                if task.task.finished:
-                    if task.task.status == "passed":
+                if task.task._finished:
+                    if task.task._status == "passed":
                         task.button.setStyleSheet("background-color: green")
-                        task.button.setText(f"Reset {task.task.name}")
+                        task.button.setText(f"Reset {task.task._name}")
                     else:
                         task.button.setStyleSheet("background-color: orange")
-                        task.button.setText(f"{task.task.name} failed!")
-                elif task.task.running:
+                        task.button.setText(f"{task.task._name} failed!")
+                elif task.task._running:
                     task.button.setStyleSheet("background-color: red")
                     if hasattr(task.task, "kill"):
-                        task.button.setText(f"Kill {task.task.name}")
+                        task.button.setText(f"Kill {task.task._name}")
                     else:
                         task.button.setEnabled(False)
-                        task.button.setText(f"{task.task.name} Running...")
+                        task.button.setText(f"{task.task._name} Running...")
                 else:
                     task.button.setStyleSheet("background-color: yellow")
-                    task.button.setText(f"Run {task.task.name}")
+                    task.button.setText(f"Run {task.task._name}")
 
     def getTask(self, task_name: str):
         """Gets the task object for the given task name"""
         for task in self.tasks:
-            if task.task.name == task_name:
+            if task.task._name == task_name:
                 return task.task
 
     def getBlocking(self, task: Task):
         """Returns blocking task, or None if not blocking"""
-        for req in task.requirements:
-            if not self.getTask(req).finished:
-                return task.name
+        for req in task._deps:
+            if not self.getTask(req)._finished:
+                return task._name
 
-    def runTask(self, to_run: list):
-        """Runs a task, appending to_run to the task queue"""
-        # Emit a signal to update display
+    def handleTaskCompletion(self, status: bool, task_name: str, msg: str, post_tasks: list):
+        """Handles task completion, running the next task or showing
+        completion dialog.
+        """
+        # Save status information
+        self.config.dump_build()
+
+        # Only throw dialogs if this is the last task
+        if len(self.run_list) == 0:
+            if status:
+                dialog = TaskFinishedDialog(task_name)
+                for task in post_tasks:
+                    dialog.addNextTask(task)
+                self.run_list.extend(dialog.run(msg))
+            else:
+                dialog = TaskFailedDialog(task_name)
+                dialog.run(msg)
+
+        self.runNextTask()
         self.task_finished.emit()
-        # Adds follow-on tasks to run list
-        for task in to_run:
-            self.run_list.append(task)
 
+
+    def runNextTask(self):
+        """Runs the next task in the queue"""
         # Launch next task in list if we have more to run
         if len(self.run_list) > 0:
             next_name = self.run_list.popleft()
@@ -265,18 +322,12 @@ class RunnerGUI(QtWidgets.QWidget):
             if next_task is None:
                 raise InvalidTaskError(next_name)
 
-            # No more items in queue, item is last
-            if len(self.run_list) == 0:
-                is_last = True
-            else:
-                is_last = False
-
             # Only run if it hasn't been run already
-            if not next_task.finished and not next_task.running:
-                next_task.run(is_last=is_last)
+            if not next_task._finished and not next_task._running:
+                next_task.run()
                 self.task_is_running = True
             else:
                 if not self.task_is_running:
-                    self.runTask([])
+                    self.runNextTask()
 
         self.updateButtons()

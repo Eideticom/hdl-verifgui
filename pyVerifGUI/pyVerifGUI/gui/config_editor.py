@@ -206,9 +206,11 @@ class ConfigEditor(QtWidgets.QWidget):
             issues.append(f"{self.core_path.text()} is not a directory")
             return issues
 
-        working_path = base_path / self.working_path.text()
-        if not working_path.is_dir() or not self.working_path.text():
-            issues.append(f"{working_path} is not a directory")
+        # TODO should there be a validation scheme here? the directory is meant
+        #      to be created...
+        #working_path = base_path / self.working_path.text()
+        #if not working_path.is_dir() or not self.working_path.text():
+        #    issues.append(f"{working_path} is not a directory")
 
         if not self.top_module.text():
             issues.append("No top level module specified!")

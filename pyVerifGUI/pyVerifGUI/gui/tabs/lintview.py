@@ -13,24 +13,30 @@
 ##############################################################################
 
 from qtpy import QtWidgets, QtCore, QtGui
-from oyaml import safe_load, dump
-import shutil
+from oyaml import safe_load
 from datetime import date
+from typing import Tuple
+import shutil
 
-from pyVerifGUI.tasks import task_names
 from pyVerifGUI.gui.models import LintMessageModel, DiffLintMessageModel, MessageType
+from pyVerifGUI.gui.base_tab import is_tab
+from pyVerifGUI.tasks.lint import LintTask
 
-from .messageview import MessageViewTab
+from pyVerifGUI.gui.tabs.messageview import MessageViewTab
 
 
+@is_tab
 class LintViewTab(MessageViewTab):
+    _name = "lint"
+    _display = "Linter"
+    _placement = 2
+
     """Provides a view of the linter output"""
-    def __init__(self, parent, config):
-        super().__init__(parent, config, LintMessageModel,
-                         DiffLintMessageModel)
+    def _post_init(self):
+        super()._post_init(LintMessageModel, DiffLintMessageModel)
         self.dialog = AddWaiverDialog(self.waiver_widget)
         self.waiver_type = "linter"
-        self.status_name = task_names.lint
+        self.status_name = LintTask._name
         self.summary_label.setText("Linter Summary")
 
         # add "open message URL action to context menu"
@@ -39,6 +45,14 @@ class LintViewTab(MessageViewTab):
         self.view_linter_warning_act.triggered.connect(self.viewWarning)
         self.context_menu.addSection("Info")
         self.context_menu.addAction(self.view_linter_warning_act)
+
+    def _verify(self) -> Tuple[bool, str]:
+        if self.config.config.get("working_dir") is None:
+            return (False, "Configuration does not have working directory!")
+        if self.config.config.get("rtl_dirs") is None:
+            return (False, "No sources specified")
+
+        return (True, "")
 
     def viewWarning(self):
         """Opens a link to the selected warning in your browser"""
@@ -64,7 +78,6 @@ class LintViewTab(MessageViewTab):
             "text_hash": self.dialog.text_hash,
             "text": self.dialog.text_text.text(),
             "waiver": True,
-            # TODO kinda hacky, need to slightly revamp view
             "legitimate": False,
         }
 

@@ -11,9 +11,6 @@
 ##############################################################################
 """GUI tool to manage verification"""
 
-__author__ = 'David Lenfesty'
-__copyright__ = 'Copyright (c) 2020. Eideticom Inc. All rights reserved.'
-__license__ = "NA"
 __version__ = "0.1.0"
 
 import sys
@@ -36,6 +33,10 @@ def main():
     arguments.add_argument("--build", "-b", type=str, help="Pre-select a build to open")
     arguments.add_argument("--user", "-u", type=str, help="Define a username for waivers")
     arguments.add_argument("--tests", "-t", type=str, help="Load a file with test selections. Will not work without a build selected.")
+    arguments.add_argument("--tabs", type=str, action="append", default=[],
+                           help="Add another directory to look for tabs in.")
+    arguments.add_argument("--tasks", type=str, action="append", default=[],
+                           help="Add another directory to look for tasks in.")
     arguments = arguments.parse_args()
 
     app = QApplication(sys.argv)
