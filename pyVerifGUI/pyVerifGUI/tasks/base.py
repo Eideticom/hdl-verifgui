@@ -249,7 +249,7 @@ class TaskFinishedDialog(QtWidgets.QDialog):
 
 class TaskFailedDialog(QtWidgets.QDialog):
     """Common popup for task (or subtask) failure"""
-    def __init__(self, task_name: str, message: str):
+    def __init__(self, task_name: str):
         super().__init__()
         self.setModal(True)
 

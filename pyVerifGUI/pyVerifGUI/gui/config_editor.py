@@ -267,6 +267,8 @@ class RtlIncludes(QtWidgets.QWidget):
         super().__init__(parent)
 
         self.layout = QtWidgets.QVBoxLayout(self)
+        self.label = QtWidgets.QLabel("RTL Includes", self)
+        self.layout.addWidget(self.label)
 
         self.add_widget = QtWidgets.QWidget(self)
         self.add_layout = QtWidgets.QHBoxLayout(self.add_widget)
@@ -291,8 +293,9 @@ class RtlIncludes(QtWidgets.QWidget):
         """Updates the widgets to display"""
         self.core_dir = Path(core_dir)
 
-        for path in rtl:
-            self._add_file(file=path)
+        if rtl:
+            for path in rtl:
+                self._add_file(file=path)
 
     def dump(self):
         """Dump settings as a dictionary"""
@@ -330,7 +333,6 @@ class RtlIncludes(QtWidgets.QWidget):
         self.layout.removeWidget(include)
         include.deleteLater()
 
-    # TODO needs to ensure that at least one file is selected by glob
     def validate(self, _core_dir: Path) -> List[str]:
         """Validates all RTL files"""
         errors = []
