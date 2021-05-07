@@ -31,8 +31,8 @@ class MyTask(Task):
 
 class MyWorker(Worker):
     def fn(self, stdout, config):
-        self.signals.stdout.emit(self.tag, "Starting my time-consuming task!")
+        self.log_stdout("Starting my time-consuming task!")
         time.sleep(5)
-        self.signals.stdout.emit(self.tag, "Done my time-consuming task!")
+        self.log_stdout("Done my time-consuming task!")
 
         return (0, "", "")

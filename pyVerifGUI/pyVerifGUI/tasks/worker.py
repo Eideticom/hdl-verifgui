@@ -89,6 +89,9 @@ class Worker(QtCore.QRunnable):
 
         return self.popen.wait(), out
 
+    def log_stdout(self, text: str):
+        self.signals.stdout.emit(self.tag, text)
+
     def kill(self, really: bool):
         """Slot to kill worker"""
         # Some workers cannot be killed, and that is okay,
