@@ -20,11 +20,13 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: BSD License",
         "Operating System :: Windows and Linux",
+        "Framework :: Pytest",
     ],
     python_requires='>=3.7',
     entry_points={
+        "pytest11": ["hdl-verigui = pyVerifGUI.pytest_integration"],
         "gui_scripts": [
-            "VerifGUI = pyVerifGUI.__main__:main",
+            "VerifGUI = pyVerifGUI:main",
         ],
     },
     install_requires=install_requires,

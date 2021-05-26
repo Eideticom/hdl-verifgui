@@ -8,3 +8,4 @@ pyside2
 qtpy
 rSVParser
 pygments
+pytest

@@ -1,3 +1,16 @@
+###############################################################################
+# @file pyVerifGUI/tasks/example_task.py
+# @package pyVerifGUI.tasks.example_task
+# @author David Lenfesty
+# @copyright Copyright (c) 2020. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Simple example of a task
+##############################################################################
+
 from qtpy import QtCore
 import time
 
