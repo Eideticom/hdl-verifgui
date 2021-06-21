@@ -13,46 +13,325 @@
 
 # TODO rewrite this whole thing
 
+from PySide2.QtCore import Qt
 from qtpy import QtWidgets, QtCore, QtGui
-from pathlib import Path
+from typing import List, Any, Optional, Text
 from functools import partialmethod
 from yaml import safe_load, dump
-from typing import List
+from pathlib import Path
 from glob import glob
+import functools
 import os
+
+from pyVerifGUI.gui.config import Config
+
 
 # TODO rework this widget so exception passing out of a constructor is not required.
 class ConfigNotSelected(Exception):
     """Exception for passing errors up out of editor object"""
 
+"""
+What functionality do I need to expose?
+
+I need some base plugins, that go in the main category
+
+"""
+# TODO will need to catch these errors and print what class failed to initialize
+# TODO need to provide a way to raise an issue when openning config, perhaps specific exceptions in open()?
+class ConfigEditorOption(QtWidgets.QWidget):
+    """Option "plugin" to use to extend the configuration editor.
+    Several examples are present in config_editor.py, that are already used in the configuration.
+
+    Use `register_config_option` as a decorator to add an option to the configuration editor.
+    Provide the decorator with a category and option, which will be used to sort the items, as
+    shown below (breadth-first alphabetical order):
+
+    main_option_1: value
+    main_option_2: value
+    category:
+      option: value
+    category2:
+      option: value
+
+    Any ConfigEditorOption is passed the value under its specified category/value pair.
+    Options with category "Main" exist on the top level.
+    """
+    # Signal to emit whenever data is updated. Triggers a `save` call and updates
+    # the cached config
+    updated = QtCore.Signal()
+
+    def init_widgets(self):
+        """Subclass initialization, do *NOT* re-impliment init, instead use this"""
+        raise NotImplementedError
+
+    def open(self):
+        """Called when a configuration is opened. Expected to fill data in to widgets.
+
+        Do so safely, catch any exceptions and default to empty
+        """
+        raise NotImplementedError
+
+    def validate(self) -> List[str]:
+        """Called when running validate step.
+
+        Returns list of issues with the configuration
+
+        Only options under the "Main" category will be errors, all else will be treated as warnings
+        """
+        raise NotImplementedError
+
+    # TODO need some save option again
+
+    def __init__(self, parent, cfg):
+        super().__init__(parent)
+        self.config = cfg
+        self.init_widgets()
+
+
+    def check_core_dir(self, dialog: bool = False) -> Optional[str]:
+        """Check if core dir exists, also can raise dialog box if it does not."""
+        core_dir = self.config["main"].get("core_dir", None)
+        if core_dir is None and dialog:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Core directory not specified!",
+                "The core directory is not configured, and is necessary for all other paths.")
+
+        return core_dir
+
+
+    def get_option(self) -> Optional[Any]:
+        if self.category in self.config:
+            if self.option in self.config[self.category]:
+                return self.config[self.category][self.option]
+
+        return None
+
+
+    def set_option(self, value: Any):
+        if not self.category in self.config:
+            self.config[self.category] = {}
+
+        self.config[self.category][self.option] = value
+
+
+config_options: List[ConfigEditorOption] = []
+# TODO migrate other plugins to a similar system... how did I not think of this before?
+#      Way simpler to register and go through a list than search through every import...
+# TODO better exception
+def register_config_option(category: str, option: str):
+    """Decorator to register class as a configuration option"""
+    def wrapper(opt: ConfigEditorOption):
+        # TODO unsure why this doesn't work
+        #if not isinstance(opt, ConfigEditorOption):
+        #    raise Exception("Attempted to register a configuration option that is not a ConfigEditorOption")
+
+        config_options.append(opt)
+        opt.category = category
+        opt.option = option
+        return opt
+
+    return wrapper
+
+
 class ConfigEditorDialog(QtWidgets.QDialog):
     """Dialog for editing config"""
     def __init__(self, parent):
         super().__init__(parent)
+        # TODO this seems to get called twice, why is that?
 
-        self.layout = QtWidgets.QHBoxLayout(self)
-        self.editor = None
+        # TODO seems to be too many layers, idk if that affects anything?
+        # Not sure how to reduce the number of layers.
+        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.scroll_area = QtWidgets.QScrollArea(self)
+        self.layout().addWidget(self.scroll_area)
+        self.cfg_widget = QtWidgets.QWidget(self.scroll_area)
+        self.cfg_widget.setLayout(QtWidgets.QVBoxLayout(self.cfg_widget))
+        #self.scroll_area.setWidget(QtWidgets.QLabel("DUAIWBDWIUABDWAUID", self.scroll_area))
+        self.categories = []
+
+        self.config = {}
+        # Sort options alphabetically, "main" first however
+        self.options = {"main": {}}
+        for opt in [opt for opt in config_options if opt.category == "main"]:
+            self.options["main"][opt.option] = opt
+        for opt in sorted([opt for opt in config_options if opt.category != "main"], key=lambda key: key.category):
+            if opt.category not in self.options:
+                self.options[opt.category] = {}
+            self.options["main"][opt.option] = opt
+
+        for cat in self.options:
+            category = QtWidgets.QWidget(self.cfg_widget)
+            self.cfg_widget.layout().addWidget(category)
+            category.setLayout(QtWidgets.QVBoxLayout(category))
+            # TODO maybe nicer widget with a line or something?
+            if cat != "main":
+                category.layout().addWidget(QtWidgets.QLabel(cat, category))
+            for opt in sorted(self.options[cat], key=lambda key: self.options[cat][key].option):
+                _opt = self.options[cat][opt](category, self.config)
+                category.layout().addWidget(_opt)
+                self.options[cat][opt] = _opt
+
+            self.categories.append(category)
+
+        # See function docs, but the layout of the widget has to be set before
+        # you can add the widget to the scroll area. If you put this before here
+        # nothing will be visible.
+        self.scroll_area.setWidget(self.cfg_widget)
+
 
     def open(self, config_path = None) -> bool:
         """Opens dialog for editing config
 
-        Returns one when dialog succeeds
+        Returns True when dialog succeeds
         """
-        # XXX Would be better to add in proper signalling to change path
-        # rather than just rebuilding.
-        if self.layout.count():
-            self.layout.removeWidget(self.editor)
-            self.editor.deleteLater()
+        self.exec_()
 
-        try:
-            self.editor = ConfigEditor(self, config_path)
-        except ConfigNotSelected:
-            return False
 
-        self.editor.save.clicked.connect(self.accept)
-        self.layout.addWidget(self.editor)
+class TextOption(ConfigEditorOption):
+    @property
+    def _label(self) -> str:
+        raise NotImplementedError
 
-        return self.exec_()
+
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.label = QtWidgets.QLabel(self._label, self)
+        self.text = QtWidgets.QLineEdit(self)
+        self.layout().addWidget(self.label)
+        self.layout().addWidget(self.text)
+
+
+    def open(self):
+        value = self.get_option()
+        if value is not None:
+            self.text.setText(value)
+
+
+    def validate(self) -> List[str]:
+        return []
+
+
+class FolderOption(ConfigEditorOption):
+    @property
+    def _force_browse(self) -> bool:
+        """Optional attribute to set which will force the user to use the browse button,
+        i.e. make the text field read-only
+        """
+        return False
+
+    @property
+    def _label(self) -> str:
+        """Attribute to set label text, required for implementation"""
+        raise NotImplementedError
+
+    @property
+    def _dialog_title(self) -> str:
+        raise NotImplementedError
+
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.layout().addWidget(QtWidgets.QLabel(self._label, self))
+
+        self.path = QtWidgets.QLineEdit(self)
+        self.path.setReadOnly(self._force_browse)
+        self.layout().addWidget(self.path)
+
+        self.browse = QtWidgets.QPushButton("Browse", self)
+        self.browse.clicked.connect(self.browse_action)
+        self.layout().addWidget(self.browse)
+
+
+    def browse_action(self):
+        core_dir = self.check_core_dir()
+        if core_dir is None:
+            return
+
+        if self.path.text():
+            start_path = self.path.text()
+        else:
+            start_path = self.config["main"]["core_dir"]
+
+        dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, start_path)
+        if dir:
+            dir = Path(dir).relative_to(Path(core_dir))
+
+            self.path.setText(str(dir))
+            self.updated.emit()
+
+
+    def open(self):
+        if self.config[self.category] is not None:
+            if self.config[self.category][self.option] is not None:
+                self.path.setText(self.config[self.category][self.option])
+                return
+
+        self.path.setText("")
+
+
+    def validate(self) -> List[str]:
+        core_dir = self.check_core_dir()
+        if core_dir is not None:
+            if self.category not in self.config:
+                return []
+            if self.option not in self.config[self.category]:
+                return []
+
+            dir: Path = Path(core_dir) / self.config[self.category][self.option]
+            if not dir.exists():
+                return [f"[{self.category}] {self.option}: directory does not exist!"]
+            if not dir.is_dir():
+                return [f"[{self.category}] {self.option}: not a directory!"]
+
+        return []
+
+
+##############################################################################
+# Default Config Options
+@register_config_option("main", "core_dir")
+class CoreDir(FolderOption):
+    """Special configuration option, lots of things overriden from the general
+    defaults because most things are meant to be relative to this option.
+    """
+    # TODO what even do I name things
+    _force_browse = True
+    _label = "Core Directory"
+    _dialog_title = "Project Directory"
+
+
+    def browse_action(self):
+        """Overriden for special core_dir case"""
+        if self.path.text():
+            start_path = self.path.text()
+        else:
+            start_path = ""
+
+        dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, start_path)
+        if dir:
+            self.path.setText(str(dir))
+            self.updated.emit()
+
+
+    def validate(self) -> List[str]:
+        """Overriden for special core_dir case"""
+        dir = Path(self.config[self.category][self.option])
+        if not dir.exists():
+            return [f"[{self.category}] {self.option}: directory does not exist!"]
+        if not dir.is_dir():
+            return [f"[{self.category}] {self.option}: not a directory!"]
+
+        return []
+
+
+@register_config_option("main", "working_dir")
+class WorkingDir(FolderOption):
+    _label = "Working Directory"
+    _dialog_tile = "Working Directory"
+
+
+@register_config_option("main", "top_module")
+class TopModule(TextOption):
+    _label = "Top Module"
 
 
 class ConfigEditor(QtWidgets.QWidget):

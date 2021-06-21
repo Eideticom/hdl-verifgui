@@ -5,10 +5,12 @@ from _pytest.reports import TestReport
 from _pytest.config import Config, PytestPluginManager
 from pytest import Item, Session
 
-# 
+# Flag to enable/disable output
 output_enabled = False
 
 # Functions roughly sorted in order of hooks being called
+# NOTE: the function signatures must use the same arg names as specified in the API,
+#       there's a check for that.
 
 def pytest_addoption(parser: Parser, pluginmanager: PytestPluginManager):
     """Adds CLI flag required for plugin to run, so that installation of
@@ -33,7 +35,10 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: List[
         return
 
     for item in items:
-        print(item._nodeid)
+        markers = [mark.name for mark in item.iter_markers()]
+        coverage = "coverage" in markers
+        regression = "regression" in markers
+        print(f"{item._nodeid},{coverage},{regression}")
 
 
 def pytest_runtest_logreport(report: TestReport):
