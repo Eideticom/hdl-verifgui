@@ -81,6 +81,7 @@ class ConfigEditor(QtWidgets.QWidget):
         # Repo name
         self.repo_label = QtWidgets.QLabel("Repository name (optional)", self)
         self.repo_name = QtWidgets.QLineEdit(self)
+        # (Temp until config gets rewritten) Coverage override
 
         # rtl
         self.rtl = RtlIncludes(self, config_path)
@@ -295,13 +296,16 @@ class RtlIncludes(QtWidgets.QWidget):
 
         if rtl:
             for path in rtl:
-                self._add_file(file=path)
+                if Path(path).is_file():
+                    self._add_file(file=path)
+                else:
+                    self._add_folder(folder=path)
 
     def dump(self):
         """Dump settings as a dictionary"""
         files = []
 
-        for i in range(self.layout.count()):
+        for i in range(1, self.layout.count()):
             include = self.layout.itemAt(i).widget()
             if include is not self.add_widget:
                 files.append(str(include.include))
@@ -310,7 +314,7 @@ class RtlIncludes(QtWidgets.QWidget):
 
     def _add_file(self, checked=False, file=""):
         """Adds a file to include"""
-        rtl_file = RtlPath(self, file, self.config_path.parent / self.core_dir)
+        rtl_file = RtlPath(self, file, self.config_path.parent / self.core_dir, "file")
         rtl_file.remove.connect(lambda: self.remove(rtl_file))
         rtl_file.path_text.setText(file)
         self.layout.replaceWidget(self.add_widget, rtl_file)
@@ -320,7 +324,7 @@ class RtlIncludes(QtWidgets.QWidget):
 
     def _add_folder(self, checked=False, folder=""):
         """Adds a folder to include"""
-        rtl_folder = RtlPath(self, folder, self.config_path.parent / self.core_dir)
+        rtl_folder = RtlPath(self, folder, self.config_path.parent / self.core_dir, "folder")
         rtl_folder.remove.connect(lambda: self.remove(rtl_folder))
         rtl_folder.path_text.setText(folder)
         self.layout.replaceWidget(self.add_widget, rtl_folder)
@@ -336,7 +340,7 @@ class RtlIncludes(QtWidgets.QWidget):
     def validate(self, _core_dir: Path) -> List[str]:
         """Validates all RTL files"""
         errors = []
-        for i in range(self.layout.count()):
+        for i in range(1, self.layout.count()):
             include = self.layout.itemAt(i).widget()
             if include is not self.add_widget:
                 if include.include == "":
@@ -360,14 +364,20 @@ class RtlPath(QtWidgets.QWidget):
     # Signals up that this folder should be removed
     remove = QtCore.Signal()
 
-    def __init__(self, parent, folder: str, core_dir):
+    def __init__(self, parent, folder: str, core_dir, path_type: str):
         super().__init__(parent)
 
         self.core_dir = core_dir
+        self.path_type = path_type
 
         # Widget init
         self.layout = QtWidgets.QHBoxLayout(self)
-        self.label = QtWidgets.QLabel("Folder", self)
+
+        if path_type == "folder":
+            self.label = QtWidgets.QLabel("Folder", self)
+        elif path_type == "file":
+            self.label = QtWidgets.QLabel("File", self)
+
         self.path_text = QtWidgets.QLineEdit(folder, self)
         self.recursive_sel = QtWidgets.QCheckBox("Recursive", self)
         self.browse_button = QtWidgets.QPushButton("Browse", self)
@@ -403,17 +413,17 @@ class RtlPath(QtWidgets.QWidget):
 
         self.path_text.setText(str(path))
 
-    def browse(self, path_type: str = "folder"):
+    def browse(self):
         """Browse to replace current folder"""
         if self.path_text.text():
             path = self.path_text.text()
         else:
             path = self.core_dir
 
-        if path_type == "folder":
+        if self.path_type == "folder":
             dialog = QtWidgets.QFileDialog.getExistingDirectory
             path = dialog(self, "Choose RTL Include Directory", str(path))
-        elif path_type == "file":
+        elif self.path_type == "file":
             dialog = QtWidgets.QFileDialog.getOpenFileName
             path, _ = dialog(self, "Choose RTL File to add", str(path), "Verilog/SystemVerilog (*.sv *.v)")
 

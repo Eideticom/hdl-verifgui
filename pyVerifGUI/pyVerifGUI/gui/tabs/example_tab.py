@@ -1,9 +1,21 @@
+###############################################################################
+# @file pyVerifGUI/gui/tabs/example_tab.py
+# @package pyVerifGUI.gui.tabs.example_tab
+# @author David Lenfesty
+# @copyright Copyright (c) 2021. Eidetic Communications Inc.
+#            All rights reserved
+# @license  Licensed under the BSD 3-Clause license.
+#           This license message must appear in all versions of this code including
+#           modified versions.
+#
+# @brief Example of a new GUI tab that can be written to extend functionality
+##############################################################################
 from typing import Tuple
 from qtpy import QtWidgets
 
 from pyVerifGUI.gui.base_tab import Tab, is_tab
 
-@is_tab
+#@is_tab
 class MyTab(Tab):
     _placement = 9
     _name = "mytab"

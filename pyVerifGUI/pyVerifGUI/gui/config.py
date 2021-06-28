@@ -170,6 +170,8 @@ class Config(QtCore.QObject):
     def open_build(self, build: str):
         """Open an existing or a new build"""
         self.build = build
+        # TODO bug here... build can be passed in as None when saving config after not openning a build
+        # This isn't exactly where the bug is, it just presents itself here.
         self.build_path = self.builds_path / self.build
         self.build_status_path = self.build_path / "build_status.yaml"
         self.model_exe = str(
