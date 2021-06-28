@@ -17,14 +17,14 @@ from oyaml import dump
 from qtpy import QtCore
 
 
-from pyVerifGUI.tasks.base import Task, is_task
+from pyVerifGUI.tasks.base import Task, is_task, task_names
 from pyVerifGUI.tasks.worker import Worker
 from pyVerifGUI.gui.config import Config
 
 
 @is_task
 class ParseCoverageTask(Task):
-    _deps = []
+    _deps = [task_names.parse]
     _name = "parse_coverage"
     _description = "Parse output coverage files"
 
