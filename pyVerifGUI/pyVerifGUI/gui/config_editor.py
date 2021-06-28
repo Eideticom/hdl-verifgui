@@ -80,7 +80,13 @@ class ConfigEditorOption(QtWidgets.QWidget):
         """
         raise NotImplementedError
 
-    # TODO need some save option again
+    def save(self):
+        """Called when save gets entered. Should save to the config dictionary.
+
+        This is required because some widgets don't have a handy built in way to do this, just
+        the way they are designed.
+        """
+        raise NotImplementedError
 
     def __init__(self, parent, cfg):
         super().__init__(parent)
@@ -180,6 +186,32 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         self.scroll_area.setWidget(self.cfg_widget)
 
 
+        # Management Buttons
+        self.buttons = QtWidgets.QWidget(self)
+        self.buttons.setLayout(QtWidgets.QHBoxLayout(self.buttons))
+        self.validate = QtWidgets.QPushButton("Validate", self.buttons)
+        self.validate.clicked.connect(self.validate_action)
+        self.save = QtWidgets.QPushButton("Save", self.buttons)
+        self.save.clicked.connect(self.save_action)
+        self.buttons.layout().addWidget(self.validate)
+        self.buttons.layout().addWidget(self.save)
+
+
+    def validate_action(self):
+        self._validate()
+
+
+    def _validate(self) -> bool:
+        pass
+
+
+    def save_action(self):
+        pass
+        #if self.validate_action():
+        #    for
+        #    # Now we save
+
+
     def open(self, config_path = None) -> bool:
         """Opens dialog for editing config
 
@@ -206,6 +238,12 @@ class TextOption(ConfigEditorOption):
         value = self.get_option()
         if value is not None:
             self.text.setText(value)
+
+
+    def save(self):
+        txt = self.text.text()
+        if len(txt) > 0:
+            self.set_option(txt)
 
 
     def validate(self) -> List[str]:
@@ -267,6 +305,12 @@ class FolderOption(ConfigEditorOption):
                 return
 
         self.path.setText("")
+
+
+    def save(self):
+        txt = self.path.text()
+        if len(txt) > 0:
+            self.set_option(txt)
 
 
     def validate(self) -> List[str]:
