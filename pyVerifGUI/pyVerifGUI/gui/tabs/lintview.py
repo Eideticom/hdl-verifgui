@@ -30,6 +30,7 @@ class LintViewTab(MessageViewTab):
     _name = "lint"
     _display = "Linter"
     _placement = 2
+    _tool_tip = "No lint ran yet!"
 
     """Provides a view of the linter output"""
     def _post_init(self):

@@ -27,6 +27,7 @@ class CoverageViewTab(MessageViewTab):
     """Coverage view widget implementation. Intended as a widget in a QTabWidget"""
     _name = "coverage"
     _display = "Coverage"
+    _tool_tip = "No coverage messages available! Please run coverage parsing from the Overview."
 
     def _post_init(self):
         super()._post_init(CoverageMessageModel,
@@ -39,7 +40,7 @@ class CoverageViewTab(MessageViewTab):
 
 
     def _verify(self) -> Tuple[bool, str]:
-        return (True, "Just because")
+        return (True, "View Coverage Issues")
 
 
     def openFile(self):
@@ -141,12 +142,6 @@ Waiving reason: {waiver['reason']}
                 # Divide by 0 means no coverage whatsover, so it's incorrect
                 return ""
 
-            file_count = 0
-            open_file = str(self.config.build_path.resolve() / "rtlfiles.lst")
-            with open(open_file, "r") as f:
-                for _ in f:
-                    file_count += 1
-
             issue_files = []
             for msg in self.message_table.model().unwaived_messages:
                 if msg["file"] not in issue_files:
@@ -165,7 +160,15 @@ Waiving reason: {waiver['reason']}
                 text += f"{waiver_diff} waivers that do not apply!"
             elif waiver_diff == 1:
                 text += "1 waiver that does not apply!"
-            text += f"{file_count} files covered, {len(issue_files)} have issues\n\n"
+
+            file_count = 0
+            open_file = self.config.build_path.resolve() / "rtlfiles.lst"
+            if open_file.exists():
+                with open(str(open_file), "r") as f:
+                    for _ in f:
+                        file_count += 1
+
+                text += f"{file_count} files covered, {len(issue_files)} have issues\n\n"
 
             try:
                 text += f"### Last Run time: {round(self.config.status['coverage_run_time'],1)}s\n\n"

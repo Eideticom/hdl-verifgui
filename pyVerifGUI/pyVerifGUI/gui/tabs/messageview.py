@@ -771,10 +771,16 @@ Waiving reason: {waiver['reason']}
     def update(self):
         if self.shouldLoadMessages():
             self.setEnabled(True)
+            self.setToolTip("")
             self.modelUpdate()
             self.viewUpdate()
         else:
             self.setEnabled(False)
+            self.setToolTip(self._tool_tip)
+
+    @property
+    def _tool_tip(self):
+        raise NotImplementedError
 
 
 #### Tabs for the "extra" functions
