@@ -21,6 +21,9 @@ import os
 
 from pyVerifGUI.gui.config import Config
 
+
+# TODO change this so it registers tabs automatically, instead of having to place things in the
+# correct folder.
 def is_tab(cls):
     """Decorator to explicitly classify an object as a tab.
 

@@ -13,16 +13,19 @@
 
 from qtpy import QtWidgets, QtCore, QtGui
 from oyaml import safe_load, dump
-import shutil
-import copy
-import time
 from typing import Sequence
+import shutil
+import time
 
-from pyVerifGUI.gui.editor import Editor
+
 from pyVerifGUI.gui.models import MessageType, MessageListType
 from pyVerifGUI.gui.models.message import Messages
 from pyVerifGUI.gui.base_tab import Tab
+from pyVerifGUI.gui.editor import Editor
+
+# Not sure if this is needed
 from pyVerifGUI.tasks.parse import ParseTask
+
 
 class MessageViewTab(Tab):
     """Base class to view messages with associated waivers"""
@@ -768,10 +771,16 @@ Waiving reason: {waiver['reason']}
     def update(self):
         if self.shouldLoadMessages():
             self.setEnabled(True)
+            self.setToolTip("")
             self.modelUpdate()
             self.viewUpdate()
         else:
             self.setEnabled(False)
+            self.setToolTip(self._tool_tip)
+
+    @property
+    def _tool_tip(self):
+        raise NotImplementedError
 
 
 #### Tabs for the "extra" functions
