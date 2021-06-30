@@ -54,12 +54,10 @@ class LintTask(Task):
         self.succeed("Linting Finished!", [])
 
 class LinterWorker(Worker):
-    def fn(self, stdout, config: Config):
+    def fn(self, config: Config):
         """Run verilator as a linter and save the parsed output into the build
         directory.
         """
-        del stdout
-
         if os.name == 'nt':
             verilator_exe = "verilator.exe"
         else:

@@ -82,7 +82,7 @@ class LookForCoverageDialog(QtWidgets.QDialog):
 
 
 class ParseCoverageWorker(Worker):
-    def fn(self, stdout, config: Config, cov_files_folder: Path):
+    def fn(self, config: Config, cov_files_folder: Path):
         """Runner to parse the coverage-annotated source files and build a list of issues"""
         messages = []
         covered = 0

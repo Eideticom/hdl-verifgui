@@ -50,11 +50,10 @@ class Worker(QtCore.QRunnable):
         # This implementation also times completion of the runner function
         start = timer()
         try:
-            returncode, stdout, stderr = self.fn(self.signals.stdout,
-                                                 *self.args, **self.kwargs)
+            returncode, stdout, stderr = self.fn(*self.args, **self.kwargs)
         except Exception as exc:
             stderr = '\n'.join(traceback.format_tb(exc.__traceback__))
-            stderr += traceback.format_exc(exc)
+            stderr += traceback.format_exc()
             returncode, stdout = (-42, "")
         finally:
             end = timer()

@@ -43,7 +43,7 @@ class MyTask(Task):
         self.succeed("Finished!", [])
 
 class MyWorker(Worker):
-    def fn(self, stdout, config):
+    def fn(self, config):
         self.log_stdout("Starting my time-consuming task!")
         time.sleep(5)
         self.log_stdout("Done my time-consuming task!")

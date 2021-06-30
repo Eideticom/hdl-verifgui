@@ -320,7 +320,7 @@ class RtlIncludes(QtWidgets.QWidget):
         self.layout.replaceWidget(self.add_widget, rtl_file)
         self.layout.addWidget(self.add_widget)
         if not file:
-            rtl_file.browse(path_type="file")
+            rtl_file.browse()
 
     def _add_folder(self, checked=False, folder=""):
         """Adds a folder to include"""
@@ -330,7 +330,7 @@ class RtlIncludes(QtWidgets.QWidget):
         self.layout.replaceWidget(self.add_widget, rtl_folder)
         self.layout.addWidget(self.add_widget)
         if not folder:
-            rtl_folder.browse(path_type="folder")
+            rtl_folder.browse()
 
     def remove(self, include: QtWidgets.QWidget):
         """Removes a file or folder"""

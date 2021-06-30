@@ -115,7 +115,7 @@ def get_extra_args(args: Optional[str]) -> List:
 
 
 class SVParseWorker(Worker):
-    def fn(self, stdout, config: Config):
+    def fn(self, config: Config):
         """Run the SystemVerilog parser and save its output to the build
         directory
         """
