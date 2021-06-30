@@ -81,7 +81,11 @@ class ConfigEditor(QtWidgets.QWidget):
         # Repo name
         self.repo_label = QtWidgets.QLabel("Repository name (optional)", self)
         self.repo_name = QtWidgets.QLineEdit(self)
-        # (Temp until config gets rewritten) Coverage override
+        # cocotb/pytest folder (temp until config gets re-written)
+        self.cocotb_label = QtWidgets.QLabel("CocoTB/pytest location", self)
+        self.cocotb_path = QtWidgets.QLineEdit(self)
+        self.cocotb_browse = QtWidgets.QPushButton("Browse", self)
+        self.cocotb_browse.clicked.connect(self.browse_for_cocotb_dir)
 
         # rtl
         self.rtl = RtlIncludes(self, config_path)
@@ -109,17 +113,20 @@ class ConfigEditor(QtWidgets.QWidget):
         self.layout.addWidget(self.working_label, 2, 0)
         self.layout.addWidget(self.working_path, 3, 0)
         self.layout.addWidget(self.browse_working_path, 3, 1)
-        self.layout.addWidget(self.top_label, 4, 0)
-        self.layout.addWidget(self.top_module, 5, 0)
-        self.layout.addWidget(self.repo_label, 6, 0)
-        self.layout.addWidget(self.repo_name, 7, 0)
-        self.layout.addWidget(self.rtl, 8, 0)
-        self.layout.addWidget(self.parser_label, 9, 0)
-        self.layout.addWidget(self.parser_args, 10, 0)
-        self.layout.addWidget(self.verilator_label, 11, 0)
-        self.layout.addWidget(self.verilator_args, 12, 0)
-        self.layout.addWidget(self.validate_button, 13, 0, 1, 2)
-        self.layout.addWidget(self.save, 14, 0, 1, 2)
+        self.layout.addWidget(self.cocotb_label, 4, 0)
+        self.layout.addWidget(self.cocotb_path, 5, 0)
+        self.layout.addWidget(self.cocotb_browse, 5, 1)
+        self.layout.addWidget(self.top_label, 6, 0)
+        self.layout.addWidget(self.top_module, 7, 0)
+        self.layout.addWidget(self.repo_label, 8, 0)
+        self.layout.addWidget(self.repo_name, 9, 0)
+        self.layout.addWidget(self.rtl, 10, 0)
+        self.layout.addWidget(self.parser_label, 11, 0)
+        self.layout.addWidget(self.parser_args, 12, 0)
+        self.layout.addWidget(self.verilator_label, 13, 0)
+        self.layout.addWidget(self.verilator_args, 14, 0)
+        self.layout.addWidget(self.validate_button, 15, 0, 1, 2)
+        self.layout.addWidget(self.save, 16, 0, 1, 2)
 
         if config_path is None:
             dialog = QtWidgets.QFileDialog.getSaveFileName
@@ -172,6 +179,27 @@ class ConfigEditor(QtWidgets.QWidget):
             path = os.path.relpath(path, str(self.config_path.parent / self._core_dir_path))
             self.working_path.setText(path)
 
+
+    def browse_for_cocotb_dir(self):
+        """Straight copy of browse_for_working_dir. Eventually these options will be genericised
+        and code copying will not be required.
+        """
+        if self._core_dir_path is None:
+            return
+
+        if self.cocotb_path.text() != "":
+            start_path = str(self.config_path.parent / self._core_dir_path / self.cocotb_path.text())
+        else:
+            start_path = str(self.config_path.parent / self._core_dir_path)
+
+        dialog = QtWidgets.QFileDialog.getExistingDirectory
+        path = dialog(self, "Select CocoTB/pytest directory", start_path)
+
+        if path:
+            path = os.path.relpath(path, str(self._core_dir_path))
+            self.cocotb_path.setText(path)
+
+
     def load_config(self, path: str):
         """Loads an existing config into the editor.
 
@@ -190,6 +218,7 @@ class ConfigEditor(QtWidgets.QWidget):
         self.working_path.setText(config.get("working_dir", ""))
         self.top_module.setText(config.get("top_module", ""))
         self.repo_name.setText(config.get("repo_name", ""))
+        self.cocotb_path.setText(config.get("cocotb_path", ""))
         self._core_dir_path = self.config_path.parent / self.core_path.text()
         self.rtl.set_core_dir(self._core_dir_path)
         rtl_dirs = config.get("rtl_dirs")
@@ -241,6 +270,7 @@ class ConfigEditor(QtWidgets.QWidget):
             "working_dir": self.working_path.text(),
             "top_module": self.top_module.text(),
             "repo_name": self.repo_name.text(),
+            "cocotb_path": self.cocotb_path.text(),
             "rtl_dirs": self.rtl.dump(),
             "parse_args": self.parser_args.toPlainText(),
             "verilator_args": self.verilator_args.toPlainText(),
@@ -314,7 +344,7 @@ class RtlIncludes(QtWidgets.QWidget):
 
     def _add_file(self, checked=False, file=""):
         """Adds a file to include"""
-        rtl_file = RtlPath(self, file, self.config_path.parent / self.core_dir, "file")
+        rtl_file = RtlPath(self, file, self.core_dir, "file")
         rtl_file.remove.connect(lambda: self.remove(rtl_file))
         rtl_file.path_text.setText(file)
         self.layout.replaceWidget(self.add_widget, rtl_file)
@@ -324,7 +354,7 @@ class RtlIncludes(QtWidgets.QWidget):
 
     def _add_folder(self, checked=False, folder=""):
         """Adds a folder to include"""
-        rtl_folder = RtlPath(self, folder, self.config_path.parent / self.core_dir, "folder")
+        rtl_folder = RtlPath(self, folder, self.core_dir, "folder")
         rtl_folder.remove.connect(lambda: self.remove(rtl_folder))
         rtl_folder.path_text.setText(folder)
         self.layout.replaceWidget(self.add_widget, rtl_folder)

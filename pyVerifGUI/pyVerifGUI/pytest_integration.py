@@ -33,7 +33,10 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: List[
         return
 
     for item in items:
-        print(item._nodeid)
+        markers = [mark.name for mark in item.iter_markers()]
+        coverage = "coverage" in markers
+        regression = "regression" in markers
+        print(f"COLLECT,{item._nodeid},{coverage},{regression}")
 
 
 def pytest_runtest_logreport(report: TestReport):
@@ -41,6 +44,5 @@ def pytest_runtest_logreport(report: TestReport):
     if not output_enabled:
         return
 
-    #print(f"{report.nodeid}: {report.outcome}")
-    print(report)
+    print(f"REPORT,{report.nodeid},{report.when},{report.outcome}")
 
