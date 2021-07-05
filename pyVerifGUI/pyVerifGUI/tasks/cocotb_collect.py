@@ -130,7 +130,7 @@ class CollectWorker(Worker):
                 for param in tests[module][test].parameters:
                     param.sort()
 
-        with open(str(config.core_dir_path / "cocotb_tests.yaml"), "w") as f:
+        with open(str(config.working_dir_path / "cocotb_tests.yaml"), "w") as f:
             f.write(dump(tests))
 
         return (0, "Test collection finished.", process.stderr.decode())

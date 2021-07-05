@@ -44,5 +44,5 @@ def pytest_runtest_logreport(report: TestReport):
     if not output_enabled:
         return
 
-    print(f"REPORT,{report.nodeid},{report.when},{report.outcome}")
+    print(f"REPORT,{report.nodeid},{report.when},{report.outcome},{report.duration}")
 

@@ -24,6 +24,7 @@ def _import_file(path: Path, existing_modules: List[str], verify: Callable):
     if path.name == "__init__.py" or path.suffix != ".py":
         return None
 
+    # TODO rename gui/tabs/cocotb_view.py to gui/tabs/cocotb.py once this gets re-worked
     if path.stem in existing_modules:
         print(f"ERROR - plugin found at {path} has a conflicting name")
         sys.exit(1)
