@@ -15,7 +15,7 @@ from PySide2.QtCore import QModelIndex
 
 
 from qtpy import QtWidgets, QtCore
-from oyaml import load, Loader
+from oyaml import load, Loader, dump
 
 
 from pyVerifGUI.gui.base_tab import Tab, is_tab
@@ -98,17 +98,20 @@ class CocoTBTab(Tab):
 
 
     def save_params(self):
-        pass
+        # TODO likely there are some edge cases still based on off-expected behaviour, but this should be good for now
+        with open(str(self.config.working_dir_path / "cocotb_test_params.yaml"), "w") as f:
+            dump(self.params_cache, f)
 
 
     def load_params(self):
-        pass
+        with open(str(self.config.working_dir_path / "cocotb_test_params.yaml")) as f:
+            self.params_cache = load(f, Loader=Loader)
 
-
-    def check_things(self):
-        if self.param_list_widget is not None:
-            for i in range(self.param_list_widget.layout().count()):
-                print(self.param_list_widget.layout().itemAt(i).widget().selected())
+        # Update current test selection to reflect newly loaded parameters
+        if self.test_selector.selectionModel() is not None:
+            idx = self.test_selector.selectionModel().currentIndex()
+            if idx.isValid():
+                self.on_test_selection(idx, None)
 
 
     def _verify(self) -> Tuple[bool, str]:
@@ -138,7 +141,6 @@ class CocoTBTab(Tab):
     def on_module_selection(self, current: QtCore.QModelIndex, _previous: QtCore.QModelIndex):
         """Handle when the user selects a different module"""
         module = current.data()
-        self.active_module = module
         tests = [test for test in self._tests[module]]
         self.test_selector.setModel(ListModel(tests))
         self.test_selector.selectionModel().currentChanged.connect(self.on_test_selection)
@@ -147,6 +149,7 @@ class CocoTBTab(Tab):
     def on_test_selection(self, current: QtCore.QModelIndex, _previous: QtCore.QModelIndex):
         test = current.data()
         self.active_test = test
+        self.active_module = self.module_selector.selectionModel().currentIndex().data()
         test: CollectedTest = self._tests[self.active_module][test]
         if self.param_list_widget is not None:
             self.param_list_widget.deleteLater()
@@ -154,8 +157,14 @@ class CocoTBTab(Tab):
         self.param_list_widget = QtWidgets.QWidget(self.params)
         self.param_list_widget.setLayout(QtWidgets.QHBoxLayout(self.param_list_widget))
 
-        for param in test.parameters:
-            param_list = ParameterList(self.param_list_widget, param)
+        # Grab cached parameters for this test
+        cached_selections = self.params_cache[self.active_module].get(self.active_test, [[] for _ in test.parameters])
+
+        for i in range(len(test.parameters)):
+            param = test.parameters[i]
+
+            # Build widget and add to list
+            param_list = ParameterList(self.param_list_widget, param, cached_selections[i])
             self.param_list_widget.layout().addWidget(param_list)
             self.params.ensureWidgetVisible(self.param_list_widget)
             param_list.update_cache.connect(self.update_local_cache)
@@ -173,8 +182,6 @@ class CocoTBTab(Tab):
 
         self.params_cache[self.active_module][self.active_test] = cache_entry
 
-        print(self.params_cache)
-
 
     def _report(self) -> str:
         # TODO later, not important yet
@@ -186,7 +193,7 @@ class ParameterList(QtWidgets.QScrollArea):
     update_cache = QtCore.Signal()
 
 
-    def __init__(self, parent, values: List[str]):
+    def __init__(self, parent, values: List[str], checked_values: List[str]):
         super().__init__(parent)
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -198,6 +205,8 @@ class ParameterList(QtWidgets.QScrollArea):
             self.scroll_widget.layout().addWidget(check)
             self.ensureWidgetVisible(self.scroll_widget)
             check.clicked.connect(self.on_click)
+            if val in checked_values:
+                check.setChecked(True)
 
         self.setWidget(self.scroll_widget)
         self.show()
