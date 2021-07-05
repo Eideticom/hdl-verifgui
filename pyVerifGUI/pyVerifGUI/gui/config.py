@@ -83,7 +83,7 @@ class Config(QtCore.QObject):
 
         self.open_config(self.config_path)
 
-        self.open_build(build)
+        self.open_build(build, reload=True)
 
     def __getitem__(self, item):
         """I don't like typing self.config.config everywhere so "directly" access the config dictionary"""
@@ -167,7 +167,7 @@ class Config(QtCore.QObject):
             self.config_path = location
             self.create_new_config.emit(location)
 
-    def open_build(self, build: str):
+    def open_build(self, build: str, reload=False):
         """Open an existing or a new build"""
         self.build = build
         # TODO bug here... build can be passed in as None when saving config after not openning a build
@@ -188,7 +188,8 @@ class Config(QtCore.QObject):
             self.status = safe_load(open(str(self.build_status_path)))
 
         self.working_dir_path = self.build_path
-        self.buildChanged.emit()
+        if reload:
+            self.buildChanged.emit()
 
     def dump_build(self):
         """Save build status to filesystem"""
