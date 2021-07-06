@@ -60,7 +60,7 @@ class CocoTBTab(Tab):
 
         self.param_container = QtWidgets.QWidget(self.select_splitter)
         self.param_container.setLayout(QtWidgets.QVBoxLayout(self.param_container))
-        self.param_label = QtWidgets.QLabel("No widget selected!", self.param_container)
+        self.param_label = QtWidgets.QLabel("No test selected!", self.param_container)
         self.params = QtWidgets.QScrollArea(self.param_container)
         self.params.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.param_container.layout().addWidget(self.param_label)
@@ -75,8 +75,14 @@ class CocoTBTab(Tab):
         self.save.clicked.connect(self.save_params)
         self.load = QtWidgets.QPushButton("Load", self.buttons)
         self.load.clicked.connect(self.load_params)
+        # Can't use this, need to save list of tests before I start the test :(
+        #overview_tab = self.parent().parent().parent().overview_tab
+        #self.run_button = overview_tab.runner.createTaskButton("cocotb_run", self.buttons)
+        self.run_button = QtWidgets.QPushButton("Run")
+        self.run_button.clicked.connect(self.run_tests)
         self.buttons.layout().addWidget(self.load)
         self.buttons.layout().addWidget(self.save)
+        self.buttons.layout().addWidget(self.run_button)
         self.tests_widget.layout().addWidget(self.tests_view)
         self.tests_widget.layout().addWidget(self.buttons)
 
@@ -97,6 +103,17 @@ class CocoTBTab(Tab):
         self.params_cache = {}
 
 
+    def run_tests(self):
+        # TODO a few more smarts here, ideally would just be another instance of the buttons
+        # in the overview.
+        with open(str(self.config.working_dir_path / "cocotb_test_list"), "w") as f:
+            for test in self.tests_view.model().tests:
+                f.write(f"{test}\n")
+
+        runner = self.parent().parent().parent().parent().overview_tab.runner
+        runner.startTaskByName("cocotb_run")
+
+
     def save_params(self):
         # TODO likely there are some edge cases still based on off-expected behaviour, but this should be good for now
         with open(str(self.config.working_dir_path / "cocotb_test_params.yaml"), "w") as f:
@@ -113,6 +130,9 @@ class CocoTBTab(Tab):
             idx = self.test_selector.selectionModel().currentIndex()
             if idx.isValid():
                 self.on_test_selection(idx, None)
+
+        # Used to ensure that list of tests is updated
+        self.update_local_cache()
 
 
     def _verify(self) -> Tuple[bool, str]:
