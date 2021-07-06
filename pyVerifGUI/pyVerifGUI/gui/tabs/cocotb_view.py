@@ -10,11 +10,11 @@
 #
 # @brief CocoTB test selector tab
 ##############################################################################
-from typing import Tuple, List
-from PySide2.QtCore import QModelIndex
+from typing import Tuple, List, Union, Any, Dict
+import itertools
 
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
 from oyaml import load, Loader, dump
 
 
@@ -68,7 +68,7 @@ class CocoTBTab(Tab):
 
         self.tests_widget = QtWidgets.QWidget(self.select_splitter)
         self.tests_widget.setLayout(QtWidgets.QVBoxLayout(self.tests_widget))
-        self.tests_view = QtWidgets.QListView(self.tests_widget)
+        self.tests_view = QtWidgets.QTableView(self.tests_widget)
         self.buttons = QtWidgets.QWidget(self.tests_widget)
         self.buttons.setLayout(QtWidgets.QHBoxLayout(self.buttons))
         self.save = QtWidgets.QPushButton("Save", self.buttons)
@@ -104,6 +104,7 @@ class CocoTBTab(Tab):
 
 
     def load_params(self):
+        # TODO load params by default
         with open(str(self.config.working_dir_path / "cocotb_test_params.yaml")) as f:
             self.params_cache = load(f, Loader=Loader)
 
@@ -182,6 +183,19 @@ class CocoTBTab(Tab):
 
         self.params_cache[self.active_module][self.active_test] = cache_entry
 
+        # Update list of tests to run
+        tests = []
+        for mod in self.params_cache:
+            for test in self.params_cache[mod]:
+                for param_list in itertools.product(*self.params_cache[mod][test]):
+                    tests.append(f"{mod}::{test}[{'-'.join(param_list)}]")
+
+        old_model = self.tests_view.model()
+        if old_model is not None:
+            old_model.deleteLater()
+        # TODO test status
+        self.tests_view.setModel(TestModel(tests, {}))
+
 
     def _report(self) -> str:
         # TODO later, not important yet
@@ -253,4 +267,70 @@ class ListModel(QtCore.QAbstractItemModel):
     def data(self, index: QtCore.QModelIndex, role: int) -> str:
         if role == QtCore.Qt.DisplayRole:
             return self.items[index.row()]
+
+
+class TestModel(QtCore.QAbstractItemModel):
+    """Model for displaying selected tests and their run status."""
+    headers = ["Test Name", "Status", "Time"]
+
+
+    def __init__(self, tests: List[str], test_status: Dict[str, Dict[str, Union[str, float]]]):
+        super().__init__()
+        self.tests = tests
+        self.test_status = test_status
+
+
+    def index(self, row: int, column: int, parent: QtCore.QModelIndex) -> QtCore.QModelIndex:
+        return self.createIndex(row, column, self.tests[row])
+
+
+    def parent(self, child: QtCore.QModelIndex) -> QtCore.QModelIndex:
+        return QtCore.QModelIndex()
+
+
+    def rowCount(self, parent: QtCore.QModelIndex) -> int:
+        return len(self.tests)
+
+
+    def columnCount(self, parent: QtCore.QModelIndex) -> int:
+        # TODO some way to keep TestStatus and self.headers synced?
+        return len(self.headers)
+
+
+    def data(self, index: QtCore.QModelIndex, role: int) -> Any:
+        # NOTE: can't use these methods on the index, because apparently they call the model's methods
+        # Not sure how I didn't find this until now
+        # test = index.data()
+        test: str = self.tests[index.row()]
+        if role == QtCore.Qt.DisplayRole:
+            if index.column() == 0:
+                return test
+            elif index.column() == 1:
+                if test in self.test_status:
+                    return self.test_status[test]["status"]
+                else:
+                    return "Unstarted"
+            elif index.column() == 2:
+                if test in self.test_status:
+                    if self.test_status[test].get("time", None) is not None:
+                        return f"{self.test_status[test]['time']}s"
+
+                return "N/A"
+
+        elif role == QtCore.Qt.BackgroundColorRole:
+            if test not in self.test_status:
+                return QtGui.QColor(0xD0, 0xD0, 0xD0) # Default colour
+
+            status = self.test_status[test]["status"]
+            if status == "passed":
+                return QtGui.QColor(0x00, 0xD0, 0x00) # Green
+            elif status == "failed":
+                return QtGui.QColor(0xD0, 0x00, 0x00) # Red
+            elif status == "running":
+                return QtGui.QColor(0xD4, 0xD4, 0x00) # Yellow ?
+
+
+    def headerData(self, section: int, orientation: QtCore.Qt.Orientation, role: int) -> Any:
+        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
+            return self.headers[section]
 
