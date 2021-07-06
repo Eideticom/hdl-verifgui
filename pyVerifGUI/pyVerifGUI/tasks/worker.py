@@ -50,6 +50,8 @@ class Worker(QtCore.QRunnable):
         # This implementation also times completion of the runner function
         start = timer()
         try:
+            # TODO I should do a bit more error handling here and checking of arguments,
+            # error messages can be a bit cryptic if you don't already know how this works
             returncode, stdout, stderr = self.fn(*self.args, **self.kwargs)
         except Exception as exc:
             stderr = '\n'.join(traceback.format_tb(exc.__traceback__))
