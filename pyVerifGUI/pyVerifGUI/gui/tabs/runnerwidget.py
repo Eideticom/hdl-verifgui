@@ -242,6 +242,7 @@ class Runner(QtWidgets.QWidget):
 
     def startTaskByName(self, task: str):
         """Convenience method for external functions to call tasks without extra effort"""
+        # TODO re-start task automatically
         task = next((t.task for t in self.tasks if t.task._name == task))
         self.startTask(task)
 
