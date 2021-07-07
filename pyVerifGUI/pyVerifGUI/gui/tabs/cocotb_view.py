@@ -10,7 +10,7 @@
 #
 # @brief CocoTB test selector tab
 ##############################################################################
-from typing import Tuple, List, Union, Any, Dict
+from typing import Tuple, List, Union, Any, Dict, Optional
 import itertools
 
 
@@ -111,7 +111,9 @@ class CocoTBTab(Tab):
                 f.write(f"{test}\n")
 
         runner = self.parent().parent().parent().parent().overview_tab.runner
-        runner.startTaskByName("cocotb_run")
+        task = runner.getTaskByName("cocotb_run")
+        task.test_finished.connect(self.update_local_cache)
+        runner.startTask(task)
 
 
     def save_params(self):
@@ -203,6 +205,12 @@ class CocoTBTab(Tab):
 
         self.params_cache[self.active_module][self.active_test] = cache_entry
 
+        try:
+            with open(str(self.config.working_dir_path / "cocotb_test_status.yaml"), 'r') as f:
+                test_status = load(f, Loader=Loader)
+        except FileNotFoundError:
+            test_status = {}
+
         # Update list of tests to run
         tests = []
         for mod in self.params_cache:
@@ -214,7 +222,7 @@ class CocoTBTab(Tab):
         if old_model is not None:
             old_model.deleteLater()
         # TODO test status
-        self.tests_view.setModel(TestModel(tests, {}))
+        self.tests_view.setModel(TestModel(tests, test_status))
 
 
     def _report(self) -> str:
@@ -316,32 +324,45 @@ class TestModel(QtCore.QAbstractItemModel):
         # TODO some way to keep TestStatus and self.headers synced?
         return len(self.headers)
 
+    
+    def getTestStatus(self, test: str) -> Optional[dict]:
+        """Kind of a bad hack, apparently somewhere in the chain the nodeids get normalized,
+        which apparently means it drops the path from the module. Until I find out how to replicate
+        this or where it happens I need to do this instead.
+
+        TODO actually fix the underlying problem of nodeids not matching
+        """
+        for status in self.test_status:
+            if test.endswith(status):
+                return self.test_status[status]
+
 
     def data(self, index: QtCore.QModelIndex, role: int) -> Any:
         # NOTE: can't use these methods on the index, because apparently they call the model's methods
         # Not sure how I didn't find this until now
         # test = index.data()
         test: str = self.tests[index.row()]
+        status = self.getTestStatus(test)
         if role == QtCore.Qt.DisplayRole:
             if index.column() == 0:
                 return test
             elif index.column() == 1:
-                if test in self.test_status:
-                    return self.test_status[test]["status"]
+                if status is not None:
+                    return status["status"]
                 else:
                     return "Unstarted"
             elif index.column() == 2:
-                if test in self.test_status:
-                    if self.test_status[test].get("time", None) is not None:
-                        return f"{self.test_status[test]['time']}s"
+                if status is not None:
+                    if status.get("time", None) is not None:
+                        return f"{status['time']}s"
 
                 return "N/A"
 
         elif role == QtCore.Qt.BackgroundColorRole:
-            if test not in self.test_status:
+            if status is None:
                 return QtGui.QColor(0xD0, 0xD0, 0xD0) # Default colour
 
-            status = self.test_status[test]["status"]
+            status = status["status"]
             if status == "passed":
                 return QtGui.QColor(0x00, 0xD0, 0x00) # Green
             elif status == "failed":

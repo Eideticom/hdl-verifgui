@@ -11,10 +11,13 @@
 # @brief CocoTB/pytest test runner
 ##############################################################################
 
-from qtpy import QtCore
+import subprocess as sp
 from typing import List
 
-import subprocess as sp
+
+from qtpy import QtCore
+from oyaml import dump
+
 
 from pyVerifGUI.tasks.base import Task, is_task
 from pyVerifGUI.tasks.worker import Worker
@@ -24,6 +27,12 @@ class CocoTB(Task):
     _deps = ["cocotb_collect"]
     _name = "cocotb_run"
     _description = "Run cocotb"
+
+
+    run_began = QtCore.Signal(str, int)
+    test_finished = QtCore.Signal()
+    testing_complete = QtCore.Signal()
+
 
     def _run(self):
         try:
@@ -38,9 +47,12 @@ class CocoTB(Task):
 
         working_dir = self.config.core_dir_path / self.config["cocotb_path"]
 
-        self.worker = TestWorker(self._name, tests, str(working_dir.resolve()))
+        self.worker = TestWorker(self._name, tests, str(working_dir.resolve()), self.config)
         self.worker.signals.result.connect(self.callback)
         self.worker.signals.stdout.connect(self.run_stdout)
+        self.worker.signals.run_began.connect(self.run_began)
+        self.worker.signals.test_finished.connect(self.test_finished)
+        self.worker.signals.testing_complete.connect(self.testing_complete)
 
         self.log_output.emit("Running pytest")
         QtCore.QThreadPool.globalInstance().start(self.worker)
@@ -53,8 +65,11 @@ class CocoTB(Task):
         self.succeed("Finished!", [])
 
 class TestWorker(Worker):
-    def fn(self, tests: List[str], working_dir: str):
+    foo = QtCore.Signal()
+    def fn(self, tests: List[str], working_dir: str, config):
         # TODO get number of workers from config maybe?
+        self.signals.run_began.emit("CocoTB", len(tests))
+        status = {}
 
         pytest_cmd = [
             "pytest",
@@ -65,12 +80,29 @@ class TestWorker(Worker):
             "-n", "2",
         ]
         pytest_cmd.extend(tests)
-
         self.popen = sp.Popen(pytest_cmd, encoding="utf-8", stdout=sp.PIPE,
                             stderr=sp.PIPE, cwd=working_dir)
 
         for line in self.popen.stdout.readlines():
             self.log_stdout(line)
+            line = line.rstrip().split(',')
+            if line[0] != "REPORT":
+                continue
+
+            nodeid = line[1]
+            if line[2] == "setup":
+                status[nodeid] = {"status": "started"}
+            elif line[2] == "call":
+                status[nodeid] = {"status": line[3], "time": line[4]}
+            else:
+                continue
+
+            with open(str(config.working_dir_path / "cocotb_test_status.yaml"), "w") as f:
+                dump(status, f)
+
+            if line[2] == "call":
+                self.signals.test_finished.emit()
 
         stdout, stderr = self.popen.communicate()
+        self.signals.testing_complete.emit()
         return (0, stdout, stderr)

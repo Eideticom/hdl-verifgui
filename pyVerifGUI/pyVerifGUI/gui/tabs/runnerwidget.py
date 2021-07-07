@@ -237,14 +237,14 @@ class Runner(QtWidgets.QWidget):
                 raise TaskFailedError(req_task._name)
 
         # add task to list
-        self.run_list.append(task._name)
+        self.run_list.append(task._name) 
 
 
-    def startTaskByName(self, task: str):
+    def getTaskByName(self, task: str) -> Task:
         """Convenience method for external functions to call tasks without extra effort"""
         # TODO re-start task automatically
         task = next((t.task for t in self.tasks if t.task._name == task))
-        self.startTask(task)
+        return task
 
 
     def startTask(self, task: Task):

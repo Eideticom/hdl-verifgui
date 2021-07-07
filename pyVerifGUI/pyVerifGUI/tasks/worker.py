@@ -27,6 +27,12 @@ class WorkerSignals(QtCore.QObject):
     stdout = QtCore.Signal(str, str)
     stderr = QtCore.Signal(str, str)
 
+    # Testing-specific signals
+    # XXX I don't like this, not sure how I could make a more generic implementation
+    run_began = QtCore.Signal(str, int)
+    test_finished = QtCore.Signal()
+    testing_complete = QtCore.Signal()
+
 
 class Worker(QtCore.QRunnable):
     """By subclassing QRunnable we can pass this class to QThreadPool.start()"""
