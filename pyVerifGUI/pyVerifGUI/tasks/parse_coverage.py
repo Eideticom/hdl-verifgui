@@ -22,7 +22,6 @@ from pyVerifGUI.tasks.base import Task, is_task, task_names
 from pyVerifGUI.tasks.worker import Worker
 from pyVerifGUI.gui.config import Config
 
-# TODO I think these dialogs should have parents? not sure how to get that though
 
 @is_task
 class ParseCoverageTask(Task):

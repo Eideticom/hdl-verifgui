@@ -80,6 +80,7 @@ class TestWorker(Worker):
             "-n", "2",
         ]
         pytest_cmd.extend(tests)
+        self.log_stdout(" ".join(pytest_cmd))
         self.popen = sp.Popen(pytest_cmd, encoding="utf-8", stdout=sp.PIPE,
                             stderr=sp.PIPE, cwd=working_dir)
 

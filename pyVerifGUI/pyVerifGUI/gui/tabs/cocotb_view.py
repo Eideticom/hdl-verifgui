@@ -61,6 +61,7 @@ class CocoTBTab(Tab):
         self.param_container = QtWidgets.QWidget(self.select_splitter)
         self.param_container.setLayout(QtWidgets.QVBoxLayout(self.param_container))
         self.param_label = QtWidgets.QLabel("No test selected!", self.param_container)
+        self.param_label.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Fixed)
         self.params = QtWidgets.QScrollArea(self.param_container)
         self.params.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.param_container.layout().addWidget(self.param_label)
@@ -167,6 +168,7 @@ class CocoTBTab(Tab):
         tests = [test for test in self._tests[module]]
         self.test_selector.setModel(ListModel(tests))
         self.test_selector.selectionModel().currentChanged.connect(self.on_test_selection)
+        self.test_selector.setEnabled(True)
 
 
     def on_test_selection(self, current: QtCore.QModelIndex, _previous: QtCore.QModelIndex):
@@ -221,7 +223,6 @@ class CocoTBTab(Tab):
         old_model = self.tests_view.model()
         if old_model is not None:
             old_model.deleteLater()
-        # TODO test status
         self.tests_view.setModel(TestModel(tests, test_status))
 
 
@@ -332,6 +333,9 @@ class TestModel(QtCore.QAbstractItemModel):
 
         TODO actually fix the underlying problem of nodeids not matching
         """
+        if self.test_status is None:
+            return None
+
         for status in self.test_status:
             if test.endswith(status):
                 return self.test_status[status]
