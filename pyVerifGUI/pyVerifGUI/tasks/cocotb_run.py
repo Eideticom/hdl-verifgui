@@ -10,9 +10,9 @@
 #
 # @brief CocoTB/pytest test runner
 ##############################################################################
-
 import subprocess as sp
 from typing import List
+import time
 
 
 from qtpy import QtCore
@@ -77,14 +77,13 @@ class TestWorker(Worker):
             "-p", "no:sugar",
             "--hdl-verifgui",
             #"-n", str(n_workers),
-            "-n", "2",
+            "-n", "1",
         ]
+        self.log_stdout(" ".join(pytest_cmd) + " " + " ".join(f"\"{test}\"" for test in tests))
         pytest_cmd.extend(tests)
-        self.log_stdout(" ".join(pytest_cmd))
-        self.popen = sp.Popen(pytest_cmd, encoding="utf-8", stdout=sp.PIPE,
-                            stderr=sp.PIPE, cwd=working_dir)
+        self.popen = sp.Popen(pytest_cmd, encoding="utf-8", stdout=sp.PIPE, cwd=working_dir)
 
-        for line in self.popen.stdout.readlines():
+        for line in self.popen.stdout:
             self.log_stdout(line)
             line = line.rstrip().split(',')
             if line[0] != "REPORT":
@@ -103,6 +102,9 @@ class TestWorker(Worker):
 
             if line[2] == "call":
                 self.signals.test_finished.emit()
+                # Sometimes the signals don't propogate fast enough to update nicely
+                time.sleep(0.05)
+
 
         stdout, stderr = self.popen.communicate()
         self.signals.testing_complete.emit()

@@ -113,7 +113,8 @@ class CocoTBTab(Tab):
 
         runner = self.parent().parent().parent().parent().overview_tab.runner
         task = runner.getTaskByName("cocotb_run")
-        task.test_finished.connect(self.update_local_cache)
+        task.test_finished.connect(self.update_view)
+        task.reset()
         runner.startTask(task)
 
 
@@ -135,7 +136,7 @@ class CocoTBTab(Tab):
                 self.on_test_selection(idx, None)
 
         # Used to ensure that list of tests is updated
-        self.update_local_cache()
+        self.update_view()
 
 
     def _verify(self) -> Tuple[bool, str]:
@@ -174,6 +175,7 @@ class CocoTBTab(Tab):
     def on_test_selection(self, current: QtCore.QModelIndex, _previous: QtCore.QModelIndex):
         test = current.data()
         self.active_test = test
+        # TODO module selection gets clobbered by something
         self.active_module = self.module_selector.selectionModel().currentIndex().data()
         test: CollectedTest = self._tests[self.active_module][test]
         if self.param_list_widget is not None:
@@ -206,7 +208,10 @@ class CocoTBTab(Tab):
             cache_entry.append(self.param_list_widget.layout().itemAt(i).widget().selected())
 
         self.params_cache[self.active_module][self.active_test] = cache_entry
+        self.update_view()
 
+
+    def update_view(self):
         try:
             with open(str(self.config.working_dir_path / "cocotb_test_status.yaml"), 'r') as f:
                 test_status = load(f, Loader=Loader)

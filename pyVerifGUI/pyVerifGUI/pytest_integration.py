@@ -1,4 +1,5 @@
 from typing import List
+import sys
 
 from _pytest.config.argparsing import Parser
 from _pytest.reports import TestReport
@@ -38,6 +39,9 @@ def pytest_collection_modifyitems(session: Session, config: Config, items: List[
         regression = "regression" in markers
         print(f"COLLECT,{item._nodeid},{coverage},{regression}")
 
+    # Flush is necessary because otherwise output gets cached until the end of the run.
+    sys.stdout.flush()
+
 
 def pytest_runtest_logreport(report: TestReport):
     """Final reports after tests run"""
@@ -45,4 +49,6 @@ def pytest_runtest_logreport(report: TestReport):
         return
 
     print(f"REPORT,{report.nodeid},{report.when},{report.outcome},{report.duration}")
+    # Flush is necessary because otherwise output gets cached until the end of the run.
+    sys.stdout.flush()
 

@@ -265,7 +265,7 @@ class Runner(QtWidgets.QWidget):
                 task.task._finished = False
             self.config.dump_build()
             tasks = self.new_build_dialog.run(
-                "New task opened! Select the task you want to run until.")
+                "New build opened! Select the task you want to run.")
             self.config.new_build = False
 
             for task_name in tasks:
