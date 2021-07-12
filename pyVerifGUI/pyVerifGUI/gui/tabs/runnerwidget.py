@@ -77,7 +77,11 @@ class Runner(QtWidgets.QWidget):
         self.thread_select = QtWidgets.QSpinBox(self)
         self.thread_select.setMinimum(1)
         self.thread_select.setMaximum(os.cpu_count() * 2)
-        self.thread_select.setValue(os.cpu_count() / 2)
+        if self.config.thread_count == 0:
+            self.thread_select.setValue(os.cpu_count() / 2)
+            self.config.thread_count = self.thread_select.value()
+        else:
+            self.thread_select.setValue(self.config.thread_count)
         self.thread_select.valueChanged.connect(self.checkThreadsValue)
 
         self.layout.addWidget(self.thread_label, 0, 0)
@@ -141,6 +145,8 @@ class Runner(QtWidgets.QWidget):
                 self.thread_warned = True
         else:
             self.thread_warned = False
+
+        self.config.thread_count = threads
 
 
     def createTaskButton(self, task: str, parent: QtWidgets.QWidget) -> QtWidgets.QPushButton:

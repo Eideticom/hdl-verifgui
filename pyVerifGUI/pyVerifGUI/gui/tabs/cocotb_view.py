@@ -363,7 +363,7 @@ class TestModel(QtCore.QAbstractItemModel):
             elif index.column() == 2:
                 if status is not None:
                     if status.get("time", None) is not None:
-                        return f"{status['time']}s"
+                        return f"{status['time']:0.3f}s"
 
                 return "N/A"
 

@@ -67,7 +67,6 @@ class CocoTB(Task):
 class TestWorker(Worker):
     foo = QtCore.Signal()
     def fn(self, tests: List[str], working_dir: str, config):
-        # TODO get number of workers from config maybe?
         self.signals.run_began.emit("CocoTB", len(tests))
         status = {}
 
@@ -76,12 +75,11 @@ class TestWorker(Worker):
             "-p", "no:terminalreporter",
             "-p", "no:sugar",
             "--hdl-verifgui",
-            #"-n", str(n_workers),
-            "-n", "1",
+            "-n", str(config.thread_count),
         ]
         self.log_stdout(" ".join(pytest_cmd) + " " + " ".join(f"\"{test}\"" for test in tests))
         pytest_cmd.extend(tests)
-        self.popen = sp.Popen(pytest_cmd, encoding="utf-8", stdout=sp.PIPE, cwd=working_dir)
+        self.popen = sp.Popen(pytest_cmd, encoding="utf-8", stdout=sp.PIPE, stderr=sp.PIPE, cwd=working_dir)
 
         for line in self.popen.stdout:
             self.log_stdout(line)
@@ -91,7 +89,10 @@ class TestWorker(Worker):
 
             nodeid = line[1]
             if line[2] == "setup":
-                status[nodeid] = {"status": "started"}
+                status[nodeid] = {
+                    "status": "started",
+                    "start_time": int(time.time()),
+                }
             elif line[2] == "call":
                 status[nodeid] = {"status": line[3], "time": line[4]}
             else:
@@ -100,12 +101,13 @@ class TestWorker(Worker):
             with open(str(config.working_dir_path / "cocotb_test_status.yaml"), "w") as f:
                 dump(status, f)
 
-            if line[2] == "call":
+            if line[2] == "call" or line[2] == "setup":
                 self.signals.test_finished.emit()
                 # Sometimes the signals don't propogate fast enough to update nicely
                 time.sleep(0.05)
 
 
+        # TODO check for incomplete tests
         stdout, stderr = self.popen.communicate()
         self.signals.testing_complete.emit()
-        return (0, stdout, stderr)
+        return (self.popen.returncode, stdout, stderr)

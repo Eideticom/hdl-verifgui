@@ -72,6 +72,8 @@ class Config(QtCore.QObject):
         # for convenience. It's easy for me *to use*, but really not a nice implementation
         self.app_path = app_path
 
+        self.thread_count = arguments.threads
+
         #self.new_config_dialog = ConfigDialog()
 
         self.new_build = False

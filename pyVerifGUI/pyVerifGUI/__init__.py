@@ -39,6 +39,8 @@ def main():
                            help="Add another directory to look for tabs in.")
     arguments.add_argument("--tasks", type=str, action="append", default=[],
                            help="Add another directory to look for tasks in.")
+    arguments.add_argument("--threads", "-j", type=int, default=0,
+                           help="Select default number of threads to give to tasks")
     arguments = arguments.parse_args()
 
     app = QApplication(sys.argv)
