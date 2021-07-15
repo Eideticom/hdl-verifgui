@@ -11,7 +11,9 @@
 # @brief CocoTB test selector tab
 ##############################################################################
 from typing import Tuple, List, Union, Any, Dict, Optional
+from pathlib import Path
 import itertools
+import os
 
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -20,23 +22,6 @@ from oyaml import load, Loader, dump
 
 from pyVerifGUI.gui.base_tab import Tab, is_tab
 from pyVerifGUI.tasks.cocotb import *
-
-"""
-cocotb_tests.yaml (list of all collected tests - module->test dict)
-cocotb_test_params.yaml (list of tests to run and their parameters - module->test dict)
-cocotb_test_results.yaml (list of test results - straight list of tests w/ results and timing)
-
-Won't have time to finish even layout probably:
-
-Grid. First row has three columns. One is split vertically, select module and test.
-Two is horizontal scrollable, full of vertical scrollables that have checkboxes for each param
-Three is list of tests. For now, filter by ones selected by params, and colour based on state.
-(we can do more advanced filtering later)
-
-Probably needs buttons for loading/saving config (and run)
-
-Also need a text box at the very bottom for overall test reporting.
-"""
 
 
 @is_tab
@@ -76,6 +61,8 @@ class CocoTBTab(Tab):
         self.save.clicked.connect(self.save_params)
         self.load = QtWidgets.QPushButton("Load", self.buttons)
         self.load.clicked.connect(self.load_params)
+        self.clear = QtWidgets.QPushButton("Clear Recent Run History", self.buttons)
+        self.clear.clicked.connect(self.clear_history)
         # Can't use this, need to save list of tests before I start the test :(
         #overview_tab = self.parent().parent().parent().overview_tab
         #self.run_button = overview_tab.runner.createTaskButton("cocotb_run", self.buttons)
@@ -83,6 +70,7 @@ class CocoTBTab(Tab):
         self.run_button.clicked.connect(self.run_tests)
         self.buttons.layout().addWidget(self.load)
         self.buttons.layout().addWidget(self.save)
+        self.buttons.layout().addWidget(self.clear)
         self.buttons.layout().addWidget(self.run_button)
         self.tests_widget.layout().addWidget(self.tests_view)
         self.tests_widget.layout().addWidget(self.buttons)
@@ -137,6 +125,13 @@ class CocoTBTab(Tab):
 
         # Used to ensure that list of tests is updated
         self.update_view()
+
+
+    def clear_history(self):
+        """Clears most recent run history, required to re-run passed tests"""
+        status: Path = self.config.working_dir_path / "cocotb_test_status.yaml"
+        if status.exists():
+            os.remove(str(status))
 
 
     def _verify(self) -> Tuple[bool, str]:
@@ -232,8 +227,16 @@ class CocoTBTab(Tab):
 
 
     def _report(self) -> str:
-        # TODO later, not important yet
-        return ""
+        run_total = 0
+        run_passed = 0
+        out =  f"""
+
+## Testing Results
+### Most Recent test:
+
+""".lstrip()
+
+        return out
 
 
 class ParameterList(QtWidgets.QScrollArea):
