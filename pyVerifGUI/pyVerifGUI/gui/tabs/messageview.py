@@ -687,10 +687,15 @@ Waiving reason: {waiver['reason']}
         # Load diff builds conditionally
         diff_messages, diff_waivers = ([], [])
         if diff_build_status[self.status_name]:
-            diff_messages = safe_load(
-                open(diff_build_path / f"{prefix}_messages.yaml"))
-            diff_waivers = safe_load(
-                open(diff_build_path / f"{prefix}_waivers.yaml"))
+            try:
+                diff_messages = safe_load(
+                    open(diff_build_path / f"{prefix}_messages.yaml"))
+                diff_waivers = safe_load(
+                    open(diff_build_path / f"{prefix}_waivers.yaml"))
+            except FileNotFoundError:
+                # TODO maybe not the greatest solution, should maybe throw a warning or otherwise
+                # present the information that the diff build isn't loading
+                diff_messages, diff_waivers = ([], [])
 
         return (messages, waivers, diff_messages, diff_waivers)
 
