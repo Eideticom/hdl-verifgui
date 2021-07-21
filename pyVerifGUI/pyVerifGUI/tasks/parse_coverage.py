@@ -92,6 +92,9 @@ class ParseCoverageWorker(Worker):
             for row, line in enumerate(data.splitlines()):
                 total += 1
 
+                if len(line) == 0:
+                    continue
+
                 # lines beginning with % are lines with issues
                 if line[0] == "%":
                     covered += 1
