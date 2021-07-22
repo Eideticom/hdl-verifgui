@@ -127,7 +127,7 @@ fn main() -> Result<(), std::io::Error> {
         sv_files.insert(String::from(filename),f);
 
         // Parse files
-        let result = parse_sv(&file, &HashMap::new(), &globs.includes, false);
+        let result = parse_sv(&file, &HashMap::new(), &globs.includes, false, false);
 
         match result {
             Ok((syntax_tree, _)) => {
