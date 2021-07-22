@@ -192,7 +192,7 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
         if index.isValid():
             if role == QtCore.Qt.DisplayRole:
                 accessor = self.messages.accessors[index.column()]
-                data = index.internalPointer()[accessor]
+                data = self.messages[index.row()][accessor]
                 if accessor == "file":
                     if not self.view_full_filenames:
                         return os.path.basename(data)
@@ -202,7 +202,7 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
 
     def getBackgroundColour(self, index: QtCore.QModelIndex) -> QtGui.QColor:
         """Returns the background colour for a given index"""
-        message = index.internalPointer()
+        message = self.messages[index.row()]
         #if self.findWaiver(message):
         if message["legitimate"]:
             return QtGui.QColor(0xFF, 0x45, 0)

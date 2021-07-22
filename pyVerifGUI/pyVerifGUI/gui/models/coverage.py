@@ -36,14 +36,6 @@ class CoverageMessageModel(AbstractMessageModel):
     def __init__(self, messages: MessageListType, waivers: MessageType):
         super().__init__(messages, waivers, CoverageMessages, CoverageWaivers)
 
-    def getBackgroundColour(self, index: QtCore.QModelIndex):
-        """Overridden here to avoid KeyError"""
-        message = index.internalPointer()
-        if not message["waiver"]:
-            if message["legitimate"]:
-                return QtGui.QColor(0xFF, 0x45, 0)
-        return QtGui.QColor(0xD4, 0xD2, 0x00)
-
 
 class CoverageDiffMessageModel(AbstractDiffMessageModel):
     """A message model for viewing the difference between coverage messages

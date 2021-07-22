@@ -678,6 +678,7 @@ Waiving reason: {waiver['reason']}
         except FileNotFoundError:
             # TODO this doesn't handle this error properly...
             self.log("Unable to load messages.")
+            return ([], [], [], [])
 
         diff_build_path = self.config.builds_path / self.diff_tab.diff_choose.currentText(
         )
