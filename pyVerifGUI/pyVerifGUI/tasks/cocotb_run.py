@@ -137,7 +137,7 @@ class TestWorker(Worker):
                     "start_time": int(time.time()),
                 }
             elif line[2] == "call":
-                status[nodeid] = {"status": line[3], "time": float(line[4])}
+                status[nodeid].update({"status": line[3], "time": float(line[4])})
 
                 # Write to "long-term" test status
                 if test_history_path.exists():
