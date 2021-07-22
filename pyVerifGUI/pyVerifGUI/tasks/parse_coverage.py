@@ -88,6 +88,9 @@ class ParseCoverageWorker(Worker):
         total = 0
 
         for f in cov_files_folder.iterdir():
+            if not f.is_file():
+                continue
+
             data = f.read_text()
             for row, line in enumerate(data.splitlines()):
                 total += 1
