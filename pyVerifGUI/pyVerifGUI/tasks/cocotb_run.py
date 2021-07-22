@@ -140,10 +140,12 @@ class TestWorker(Worker):
                 status[nodeid].update({"status": line[3], "time": float(line[4])})
 
                 # Write to "long-term" test status
+                test_history = None
                 if test_history_path.exists():
                     with open(str(test_history_path)) as f:
                         test_history = load(f, Loader=Loader)
-                else:
+
+                if test_history is None:
                     test_history = {}
 
                 # Save specific test instance
@@ -152,8 +154,8 @@ class TestWorker(Worker):
                 test_history[nodeid] = _test
 
                 # TODO is there any way to/is it faster to modify in place?
-                with open(str(test_history_path)) as f:
-                    dump(test_history, test_history_path)
+                with open(str(test_history_path), "w") as f:
+                    dump(test_history, f)
 
             else:
                 continue
