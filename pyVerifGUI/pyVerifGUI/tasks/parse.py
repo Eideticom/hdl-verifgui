@@ -27,7 +27,6 @@ from pyVerifGUI.gui.config import Config
 @is_task
 class ParseTask(Task):
     _deps = []
-    _running = False
     _name = task_names.parse
     _description = "SystemVerilog Design Parser (pySVparser)"
 
@@ -48,7 +47,6 @@ class ParseTask(Task):
 
             self.log_output.emit("Parsing RTL...")
             QtCore.QThreadPool.globalInstance().start(self.worker)
-            self._running = True
 
     def callback(self, tag: str, rc: int, stdout: str, stderr: str,
                  time: float):

@@ -47,7 +47,9 @@ class ParseCoverageTask(Task):
 
 
         self.worker = ParseCoverageWorker(self._name, self.config, cov_files)
+        # TODO these connections should be consolidated
         self.worker.signals.result.connect(self.callback)
+        self.worker.signals.result.connect(self.run_results)
         self.worker.signals.stdout.connect(self.run_stdout)
 
         QtCore.QThreadPool.globalInstance().start(self.worker)
