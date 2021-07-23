@@ -132,8 +132,9 @@ Waiving reason: {waiver['reason']}
 
             try:
                 # TODO exception here if tests don't actually clean up
-                covered_count = self.config.status["covered_count"]
-                coverage_count = self.config.status["coverage_count"]
+                coverage_count = self.config.status["coverage_total"]
+                uncovered_count = self.config.status["uncovered_count"]
+                covered_count = coverage_count - uncovered_count
                 coverage_percent = round(covered_count / coverage_count * 100, 2)
                 waivered_coverage_count = covered_count + waiver_count
                 waivered_coverage_percent = round(

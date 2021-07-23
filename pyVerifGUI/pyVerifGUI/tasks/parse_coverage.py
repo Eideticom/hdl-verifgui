@@ -84,7 +84,7 @@ class ParseCoverageWorker(Worker):
     def fn(self, config: Config, cov_files_folder: Path):
         """Runner to parse the coverage-annotated source files and build a list of issues"""
         messages = []
-        covered = 0
+        uncovered = 0
         total = 0
 
         for f in cov_files_folder.iterdir():
@@ -93,14 +93,12 @@ class ParseCoverageWorker(Worker):
 
             data = f.read_text()
             for row, line in enumerate(data.splitlines()):
-                total += 1
-
                 if len(line) == 0:
                     continue
 
                 # lines beginning with % are lines with issues
                 if line[0] == "%":
-                    covered += 1
+                    uncovered += 1
                     # Annotated lines with issues look like this:
                     # %xxxxxxxx\tsource_line_goes_here\n
                     # The tab seperates the count from the line contents
@@ -127,8 +125,11 @@ class ParseCoverageWorker(Worker):
                         False,
                     })
 
-        config.status["covered_count"] = covered
-        config.status["coverage_count"] = total
+                if line[0] == "%" or line[0] == " ":
+                    total += 1
+
+        config.status["uncovered_count"] = uncovered
+        config.status["coverage_total"] = total
 
         dump(messages,
              open(str(config.build_path / "coverage_messages.yaml"), "w"))
