@@ -492,10 +492,16 @@ class MessageViewTab(Tab):
     def waiverRemove(self):
         """Called when removing waiver. Generic enough to be implemented here"""
         waiver = self.getMessageSelection()
-        # checkIfMessage should return false if it is a waiver
-        if waiver is None or self.checkIfMessage(waiver):
+        if waiver is None:
             self.no_waiver_dialog.exec_()
             return
+
+        # Attempt to find waiver for message
+        if self.checkIfMessage(waiver):
+            waiver = self.message_table.model().findWaiver(waiver)
+            if waiver is None:
+                self.no_waiver_dialog.exec_()
+                return
 
         msg = QtWidgets.QMessageBox()
         msg.setText("Confirm removing waiver.")
