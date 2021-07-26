@@ -229,7 +229,7 @@ class AddWaiverDialog(QtWidgets.QDialog):
         # Add pre-built list of reasons
         self.reason_select.setEditable(True)
         self.reasons = [
-            "Coverd by Single TC",
+            "Covered by Single TC",
             "Unused signal",
             "Unused port",
             "Unreachable state",

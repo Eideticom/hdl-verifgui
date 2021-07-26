@@ -180,7 +180,6 @@ class MessageViewTab(Tab):
 
         # Dialogs
         self.empty_fields_dialog = QtWidgets.QMessageBox()
-        self.empty_fields_dialog.setText("Empty fields are not permitted!")
         self.no_waiver_dialog = QtWidgets.QMessageBox()
         self.no_waiver_dialog.setText(
             "Nothing selected or selection is not a waiver!")
@@ -392,6 +391,24 @@ class MessageViewTab(Tab):
         else:
             self.select_build_dialog.exec_()
 
+
+    def isWaiverValid(self, waiver: dict) -> bool:
+        """Checks if waiver is valid, returns True if valid"""
+        # Fail on any empty string (besides explanation, seperate check for that)
+        for key, value in waiver.items():
+            if key is not "explanation" and value == "":
+                self.empty_fields_dialog.setText(f"Field {key} must not be left empty!")
+                self.empty_fields_dialog.exec_()
+                return False
+
+        if waiver["reason"] == "Other" and waiver["explanation"] == "":
+            self.empty_fields_dialog.setText(f"If 'Other' reason is selected, explanation must not be empty!")
+            self.empty_fields_dialog.exec_()
+            return False
+
+        return True
+
+
     def waiverAddCB(self, r: int):
         """Handler for once the dialog to add a waiver exits"""
         # Do nothing on rejected
@@ -399,10 +416,7 @@ class MessageViewTab(Tab):
             return
 
         waiver = self.buildWaiverFromDialog()
-
-        # Fail on any empty string
-        if any(value == "" for value in waiver.values()):
-            self.empty_fields_dialog.exec_()
+        if not self.isWaiverValid(waiver):
             return
 
         # convenience for lookups later
@@ -466,9 +480,7 @@ class MessageViewTab(Tab):
             return
 
         waiver = self.buildWaiverFromDialog()
-
-        if any(value == "" for value in waiver.values()):
-            self.empty_fields_dialog.exec_()
+        if not self.isWaiverValid(waiver):
             return
 
         model = self.message_table.model()
