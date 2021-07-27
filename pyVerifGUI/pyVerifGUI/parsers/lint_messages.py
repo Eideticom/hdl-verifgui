@@ -48,7 +48,7 @@ def parse_verilator_output(lint: str) -> (MessageListType, List[str]):
                 "type": match[1][1:],
                 "waiver": False,
                 "comment": "N/A",
-                "legitimate": False,
+                "reviewed": False,
                 "error": False,
             })
         elif match[0] == "Error" and len(match[2]) != 0:
@@ -63,7 +63,7 @@ def parse_verilator_output(lint: str) -> (MessageListType, List[str]):
                 "type": error_type,
                 "waiver": False,
                 "comment": "N/A",
-                "legitimate": False,
+                "reviewed": False,
                 "error": True,
             })
         elif match[0] == "Error" and len(match[2]) == 0:

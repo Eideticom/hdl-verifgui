@@ -207,8 +207,11 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
         """Returns the background colour for a given index"""
         message = self.messages[index.row()]
         #if self.findWaiver(message):
-        if not message["waiver"] and message["legitimate"]:
-            return QtGui.QColor(0xFF, 0x45, 0)
+        if not message["waiver"]:
+            if message["reviewed"]:
+                return QtGui.QColor(0xFF, 0x45, 0)
+            if message["unimplemented"]:
+                return QtGui.QColor(0xD0, 0x20, 0)
         elif message.get("error", False):
             return QtGui.QColor(0xD0, 0, 0)
         elif self.selection == "all":

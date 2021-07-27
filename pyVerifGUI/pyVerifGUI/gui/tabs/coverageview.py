@@ -118,7 +118,7 @@ Waiving reason: {waiver['reason']}
 
     def generateSummary(self) -> str:
         """Generates the summary text"""
-        model = self.message_table.model()
+        model: CoverageMessageModel = self.message_table.model()
         count = len(model.all_messages)
         if count > 0:
             waived_count = len(model.waived_messages)
@@ -149,12 +149,17 @@ Waiving reason: {waiver['reason']}
                 # Divide by 0 means no coverage whatsover, so it's incorrect
                 return ""
 
+            reviewed_count = len([msg for msg in model.all_messages if msg.get("reviewed", False)])
+            unimplemented_count = len([msg for msg in model.all_messages if msg.get("unimplemented", False)])
+
             issue_files = []
             for msg in self.message_table.model().unwaived_messages:
                 if msg["file"] not in issue_files:
                     issue_files.append(msg["file"])
 
             text = f"## Total coverage: ({covered_count}/{coverage_count}) {coverage_percent}%\n\n"
+            text += f"Messages marked as reviewed: {reviewed_count}\n\n"
+            text += f"Messages marked as umimplemented: {unimplemented_count}\n\n"
             text += "Waivers:\n"
             for i in range(len(reasons_count)):
                 text += f"- {self.dialog.reasons[i]}: {reasons_count[i]}\n"

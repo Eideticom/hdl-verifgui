@@ -130,7 +130,8 @@ class ParseCoverageWorker(Worker):
                             hashlib.md5(line[1].encode('utf-8')).hexdigest(), 16
                         ),
                         "comment": "N/A",
-                        "legitimate": False,
+                        "reviewed": False,
+                        "unimplemented": False,
                     })
 
                 if line[0] == "%" or line[0] == " ":

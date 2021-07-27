@@ -16,8 +16,8 @@ The main feature of the Linter tab is waivers. These allow you to mark
 messages that you believe are not valid for your module, while assigning a
 name and a reason to that waiver. By doing this you can whittle down
 extraneous linting messages and leave only the messages that could flag
-actual bugs. Messages you believe are legitimate can be marked as such by
-right-clicking on them, and selecting "Toggle Legitimate".
+actual bugs. Messages that have been reviewd - but not waived - can be marked as
+such by right-clicking on them, and selecting "Toggle Reviewed".
 
 On the top right of the box with the waivers there is a set of radio buttons.
 These allow you to filter the messages you see, and view different sets of

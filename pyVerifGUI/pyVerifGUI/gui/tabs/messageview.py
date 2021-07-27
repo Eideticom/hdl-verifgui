@@ -151,9 +151,12 @@ class MessageViewTab(Tab):
         # Waiver management buttons
         self.waiver_widget = QtWidgets.QWidget(self)
         self.waiver_layout = QtWidgets.QHBoxLayout(self.waiver_widget)
-        self.mark_legitimate = QtWidgets.QPushButton("Toggle Legitimate",
+        self.mark_reviewed = QtWidgets.QPushButton("Toggle Reviewed",
                                                      self.waiver_widget)
-        self.mark_legitimate.clicked.connect(self.markLegitimate)
+        self.mark_reviewed.clicked.connect(self.markReviewed)
+        self.mark_unimplemented = QtWidgets.QPushButton("Toggle Unimplemented",
+                                                        self.waiver_widget)
+        self.mark_unimplemented.clicked.connect(self.markUnimplemented)
         self.waiver_edit = QtWidgets.QPushButton("Add/Edit Waiver",
                                                  self.waiver_widget)
         self.waiver_edit.clicked.connect(self.addOrEditWaiver)
@@ -164,7 +167,8 @@ class MessageViewTab(Tab):
         self.orphan_update.clicked.connect(self.handleOrphanUpdate)
         self.orphan_update.setEnabled(False)
         self.waiver_layout.addStretch()
-        self.waiver_layout.addWidget(self.mark_legitimate)
+        self.waiver_layout.addWidget(self.mark_reviewed)
+        self.waiver_layout.addWidget(self.mark_unimplemented)
         self.waiver_layout.addWidget(self.waiver_edit)
         self.waiver_layout.addWidget(self.waiver_remove)
         self.waiver_layout.addWidget(self.orphan_update)
@@ -211,9 +215,12 @@ class MessageViewTab(Tab):
         self.open_file_act = QtWidgets.QAction("Open File", self)
         self.open_file_act.triggered.connect(self.openFile)
         self.open_file_act.setShortcut(QtGui.QKeySequence("Ctrl+O"))
-        self.mark_legitimate_act = QtWidgets.QAction("Toggle Legitimate", self)
-        self.mark_legitimate_act.setShortcut(QtGui.QKeySequence("Ctrl+L"))
-        self.mark_legitimate_act.triggered.connect(self.markLegitimate)
+        self.mark_unimplemented_act = QtWidgets.QAction("Toggle Unimplemented", self)
+        self.mark_unimplemented_act.setShortcut(QtGui.QKeySequence("Ctrl+U"))
+        self.mark_unimplemented_act.triggered.connect(self.markUnimplemented)
+        self.mark_reviewed_act = QtWidgets.QAction("Toggle Reviewed", self)
+        self.mark_reviewed_act.setShortcut(QtGui.QKeySequence("Ctrl+R"))
+        self.mark_reviewed_act.triggered.connect(self.markReviewed)
         self.edit_waiver_act = QtWidgets.QAction("Add/Edit Waiver", self)
         self.edit_waiver_act.triggered.connect(self.addOrEditWaiver)
         self.edit_waiver_act.setShortcut(QtGui.QKeySequence("Ctrl+W"))
@@ -224,7 +231,8 @@ class MessageViewTab(Tab):
         self.edit_comment_act.setShortcut(QtGui.QKeySequence("Ctrl+E"))
         self.context_menu = QtWidgets.QMenu(self)
         self.context_menu.addSection("Message Management")
-        self.context_menu.addAction(self.mark_legitimate_act)
+        self.context_menu.addAction(self.mark_reviewed_act)
+        self.context_menu.addAction(self.mark_unimplemented_act)
         self.context_menu.addAction(self.edit_waiver_act)
         self.context_menu.addAction(self.remove_waiver_act)
         self.context_menu.addAction(self.edit_comment_act)
@@ -232,7 +240,7 @@ class MessageViewTab(Tab):
         self.context_menu.addAction(self.open_file_act)
 
         self.addAction(self.open_file_act)
-        self.addAction(self.mark_legitimate_act)
+        self.addAction(self.mark_reviewed_act)
         self.addAction(self.edit_waiver_act)
         self.addAction(self.edit_comment_act)
 
@@ -342,18 +350,31 @@ class MessageViewTab(Tab):
         """
         raise NotImplementedError
 
-    def markLegitimate(self, checked=False):
-        """Marks a message as legitimate"""
-        del checked
+
+    def checkIfMessage(self, message) -> bool:
+        """Required subclass implementation, checks if current selection is actually a message"""
+        raise NotImplementedError
+
+
+    def markMessageAttribute(self, attribute):
         selection_model = self.message_table.selectionModel()
         if selection_model.hasSelection():
-            message = selection_model.selection().indexes()[0].internalPointer(
-            )
+            # TODO I don't believe internalPointer is the correct way here
+            message = selection_model.selection().indexes()[0].internalPointer()
             if self.checkIfMessage(message):
-                # toggles legitimate status
-                message.update({"legitimate": not message["legitimate"]})
+                message.update({attribute: not message.get(attribute, False)})
                 self.dumpMessages(self.message_table.model())
                 self.modelUpdate()
+
+
+    def markReviewed(self, checked=False):
+        """Marks a message as reviewed"""
+        self.markMessageAttribute("reviewed")
+
+
+    def markUnimplemented(self, checked=False):
+        self.markMessageAttribute("unimplemented")
+
 
     def addOrEditWaiver(self, checked=False):
         """Common handler for dealing with adding or editing waivers for a message"""

@@ -79,7 +79,7 @@ class LintViewTab(MessageViewTab):
             "text_hash": self.dialog.text_hash,
             "text": self.dialog.text_text.text(),
             "waiver": True,
-            "legitimate": False,
+            "reviewed": False,
         }
 
     def buildAddDialog(self, message: MessageType):
