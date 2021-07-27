@@ -68,7 +68,7 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
 
     def isMessageEqual(self, a, b):
         """Required implementation of whether two messages are equal"""
-        if a["file"] == b["file"] and a["row"] == b["row"]:
+        if a["file"] == b["file"] and a["lineno"] == b["lineno"]:
             if a["text_hash"] == b["text_hash"]:
                 return True
 

@@ -15,7 +15,7 @@ class CoverageMessages(Messages):
     def __init__(self, messages: MessageListType):
         self.messages = messages
         self.headers = ["File", "Line", "Hits", "Context"]
-        self.accessors = ["file", "row", "count", "text"]
+        self.accessors = ["file", "lineno", "count", "text"]
 
 
 class CoverageWaivers(Messages):
@@ -27,7 +27,7 @@ class CoverageWaivers(Messages):
             "Context"
         ]
         self.accessors = [
-            "file", "row", "date", "author", "reason", "explanation", "text"
+            "file", "lineno", "date", "author", "reason", "explanation", "text"
         ]
 
 

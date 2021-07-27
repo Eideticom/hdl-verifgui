@@ -23,7 +23,7 @@ class LintMessages(Messages):
     def __init__(self, messages: MessageListType):
         self.messages = messages
         self.headers = ["File", "Line", "Column", "Type", "Information"]
-        self.accessors = ["file", "row", "column", "type", "text"]
+        self.accessors = ["file", "lineno", "column", "type", "text"]
 
 
 class LintWaivers(Messages):
@@ -34,7 +34,7 @@ class LintWaivers(Messages):
             "File", "Line", "Type", "Author", "Date", "Reason", "Context"
         ]
         self.accessors = [
-            "file", "row", "type", "author", "date", "reason", "text"
+            "file", "lineno", "type", "author", "date", "reason", "text"
         ]
 
 

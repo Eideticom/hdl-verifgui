@@ -51,13 +51,13 @@ class CoverageViewTab(MessageViewTab):
             message = selection_model.selection().indexes()[0].internalPointer()
             filename = (self.config.build_path.resolve()
                         / "coverage_files" / message["file"])
-            self.fileOpened.emit(str(filename), message["row"])
+            self.fileOpened.emit(str(filename), message["cov_file_lineno"])
 
     def buildWaiverFromDialog(self) -> dict:
         """Required subclass implementation"""
         return {
             "file": self.dialog.file_text.text(),
-            "row": int(self.dialog.row_text.text()),
+            "lineno": int(self.dialog.row_text.text()),
             "date": date.today().strftime("%Y-%m-%d"),
             "author": self.dialog.author_text.text(),
             "reason": self.dialog.reason_select.currentText(),
@@ -70,7 +70,7 @@ class CoverageViewTab(MessageViewTab):
     def buildAddDialog(self, message: MessageType):
         """Required subclass implementation"""
         self.dialog.file_text.setText(message["file"])
-        self.dialog.row_text.setText(str(message["row"]))
+        self.dialog.row_text.setText(str(message["lineno"]))
         self.dialog.row_text.setReadOnly(True)
         self.dialog.explanation_text.setText("")
         self.dialog.text = message["text"]
@@ -79,7 +79,7 @@ class CoverageViewTab(MessageViewTab):
     def buildEditDialog(self, waiver: MessageType):
         """Required subclass implementation"""
         self.dialog.file_text.setText(waiver["file"])
-        self.dialog.row_text.setText(str(waiver["row"]))
+        self.dialog.row_text.setText(str(waiver["lineno"]))
         self.dialog.row_text.setReadOnly(True)
         self.dialog.author_text.setText(waiver["author"])
 
@@ -97,7 +97,7 @@ class CoverageViewTab(MessageViewTab):
         """Returns text to display about message. Overrides base MessageView implementation"""
         return f"""### Linter Message
 
-{message['file']}: Line {message['row']}.
+{message['file']}: Line {message["lineno"]}.
 
 {message['text']}
 
@@ -109,7 +109,7 @@ Comment: {message['comment']}
         return f"""
 ### Waiver
 
-{waiver['file']}: Line {waiver['row']}, waived on {waiver['date']}.
+{waiver['file']}: Line {waiver["lineno"]}, waived on {waiver['date']}.
 
 {waiver['text']}
 

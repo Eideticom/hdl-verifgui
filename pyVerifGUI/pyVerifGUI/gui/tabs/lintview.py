@@ -71,7 +71,7 @@ class LintViewTab(MessageViewTab):
         """Required subclass implementation"""
         return {
             "file": self.dialog.file_text.text(),
-            "row": int(self.dialog.row_text.text()),
+            "lineno": int(self.dialog.row_text.text()),
             "type": self.dialog.type_text.text(),
             "author": self.dialog.author_text.text(),
             "date": date.today().strftime("%Y-%m-%d"),
@@ -85,7 +85,7 @@ class LintViewTab(MessageViewTab):
     def buildAddDialog(self, message: MessageType):
         """Required subclass implementation"""
         self.dialog.file_text.setText(message["file"])
-        self.dialog.row_text.setText(str(message["row"]))
+        self.dialog.row_text.setText(str(message["lineno"]))
         self.dialog.row_text.setReadOnly(True)
         self.dialog.type_text.setText(message["type"])
         self.dialog.reason_text.setText("")
@@ -95,7 +95,7 @@ class LintViewTab(MessageViewTab):
     def buildEditDialog(self, waiver: MessageType):
         """Required subclass implementation"""
         self.dialog.file_text.setText(waiver["file"])
-        self.dialog.row_text.setText(str(waiver["row"]))
+        self.dialog.row_text.setText(str(waiver["lineno"]))
         self.dialog.row_text.setReadOnly(True)
         self.dialog.type_text.setText(waiver["type"])
         self.dialog.author_text.setText(waiver["author"])

@@ -89,6 +89,9 @@ class ParseCoverageWorker(Worker):
         uncovered = 0
         total = 0
 
+        # Keeps track of the extra lines that verilator inserts and adjusts for them
+        verilator_correction = 1 # 1 extra comment line at top
+
         for f in cov_files_folder.iterdir():
             if not f.is_file():
                 continue
@@ -98,6 +101,10 @@ class ParseCoverageWorker(Worker):
                 if len(line) == 0:
                     continue
 
+                verilator_cov_line = "verilator_coverage:" in line
+                if verilator_cov_line:
+                    verilator_correction += 2
+
                 # lines beginning with % are lines with issues
                 if line[0] == "%":
                     uncovered += 1
@@ -105,26 +112,25 @@ class ParseCoverageWorker(Worker):
                     # %xxxxxxxx\tsource_line_goes_here\n
                     # The tab seperates the count from the line contents
                     line = line.split("\t", 1)
+
+                    # 1-indexed, so corrected relative to 0-indexing
+                    if verilator_cov_line:
+                        lineno = row
+                    else:
+                        lineno = row + 1 - verilator_correction
+
                     messages.append({
-                        "file":
-                        str(f),
-                        # the "row" here is 1-indexed because it translates to line number
-                        "waiver":
-                        False,
-                        "row":
-                        row + 1,
-                        "text":
-                        line[1],
-                        "count":
-                        int(line[0][1:]),
-                        "text_hash":
-                        int(
-                            hashlib.md5(line[1].encode('utf-8')).hexdigest(),
-                            16),
-                        "comment":
-                        "N/A",
-                        "legitimate":
-                        False,
+                        "file": str(f),
+                        "waiver": False,
+                        "lineno": lineno,
+                        "cov_file_lineno": row + 1,
+                        "text": line[1],
+                        "count": int(line[0][1:]),
+                        "text_hash": int(
+                            hashlib.md5(line[1].encode('utf-8')).hexdigest(), 16
+                        ),
+                        "comment": "N/A",
+                        "legitimate": False,
                     })
 
                 if line[0] == "%" or line[0] == " ":

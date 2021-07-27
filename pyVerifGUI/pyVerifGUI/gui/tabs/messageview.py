@@ -303,7 +303,7 @@ class MessageViewTab(Tab):
             message = selection_model.selection().indexes()[0].internalPointer(
             )
 
-            self.fileOpened.emit(message["file"], message["row"])
+            self.fileOpened.emit(message["file"], message["lineno"])
 
     def getMessageSelection(self):
         """Gets the selected message. Returns the message or None if there is nothing selected"""
@@ -437,7 +437,7 @@ class MessageViewTab(Tab):
                 # so we can just make these match each message to bulk add.
                 waiver_ = waiver.copy()
                 waiver_["file"] = message["file"]
-                waiver_["row"] = message["row"]
+                waiver_["lineno"] = message["lineno"]
                 waiver_["text_hash"] = message["text_hash"]
 
                 model.addWaiver(waiver_)
@@ -505,7 +505,7 @@ class MessageViewTab(Tab):
 
         msg = QtWidgets.QMessageBox()
         msg.setText("Confirm removing waiver.")
-        msg.setInformativeText(f"In {waiver['file']}, on line {waiver['row']}")
+        msg.setInformativeText(f"In {waiver['file']}, on line {waiver['lineno']}")
         msg.setStandardButtons(QtWidgets.QMessageBox.Ok
                                | QtWidgets.QMessageBox.Cancel)
         msg.setDefaultButton(QtWidgets.QMessageBox.Cancel)
@@ -545,7 +545,7 @@ class MessageViewTab(Tab):
             self.orphan_tab.modelUpdate([], "")
 
         # Update editor
-        self.editor_tab.viewFile(selection["file"], selection["row"])
+        self.editor_tab.viewFile(selection["file"], selection["lineno"])
 
     def handleOrphanUpdate(self, checked=False):
         """Slot to handle clicking orphan update button"""
@@ -564,7 +564,7 @@ class MessageViewTab(Tab):
         # Update values in waiver
         waiver = selection_model.currentIndex().internalPointer()
         waiver.update({
-            "row": message["row"],
+            "lineno": message["lineno"],
             "text_hash": message["text_hash"],
         })
 
@@ -623,7 +623,7 @@ class MessageViewTab(Tab):
         """Returns text to display about message"""
         return f"""### Linter Message
 
-{message['file']}: Line {message['row']}, column {message['column']}.
+{message['file']}: Line {message["lineno"]}, column {message['column']}.
 
 {message['type']}: {message['text']}
 
@@ -635,7 +635,7 @@ Comment: {message['comment']}
         return f"""
 ### Waiver
 
-{waiver['file']}: Line {waiver['row']}, waived on {waiver['date']}.
+{waiver['file']}: Line {waiver["lineno"]}, waived on {waiver['date']}.
 
 {waiver['type']}: {waiver['text']}
 
@@ -929,7 +929,7 @@ class OrphanTab(QtWidgets.QWidget):
         if selection_model is not None:
             if selection_model.hasSelection():
                 message = selection_model.currentIndex().internalPointer()
-                self.fileOpened.emit(message["file"], message["row"])
+                self.fileOpened.emit(message["file"], message["lineno"])
 
     def updateMessageInfo(self, current: QtCore.QModelIndex,
                           previous: QtCore.QModelIndex):

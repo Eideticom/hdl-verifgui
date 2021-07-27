@@ -41,7 +41,7 @@ def parse_verilator_output(lint: str) -> (MessageListType, List[str]):
             # Linting/parsing warnings
             messages.append({
                 "file": match[3],
-                "row": int(match[4]),
+                "lineno": int(match[4]),
                 "column": int(match[6]),
                 "text": match[7],
                 "text_hash": int(hashlib.md5(match[7].encode('utf-8')).hexdigest(), 16),
@@ -56,7 +56,7 @@ def parse_verilator_output(lint: str) -> (MessageListType, List[str]):
             error_type = match[1][1:] if len(match[1]) != 0 else "Parse Error"
             messages.append({
                 "file": match[3],
-                "row": int(match[4]),
+                "lineno": int(match[4]),
                 "column": int(match[6]),
                 "text": match[7],
                 "text_hash": int(hashlib.md5(match[7].encode('utf-8')).hexdigest(), 16),
