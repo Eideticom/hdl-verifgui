@@ -401,7 +401,7 @@ class MessageViewTab(Tab):
                 self.empty_fields_dialog.exec_()
                 return False
 
-        if waiver["reason"] == "Other" and waiver["explanation"] == "":
+        if "Other" in waiver["reason"] and waiver["explanation"] == "":
             self.empty_fields_dialog.setText(f"If 'Other' reason is selected, explanation must not be empty!")
             self.empty_fields_dialog.exec_()
             return False

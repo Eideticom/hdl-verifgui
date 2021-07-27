@@ -10,16 +10,16 @@
 #
 # @brief GUI for managing verilator code coverage reports.
 ##############################################################################
-from qtpy import QtWidgets, QtCore, QtGui
+from typing import Tuple, List
 from datetime import date
-from typing import Tuple
+
+
+from qtpy import QtWidgets, QtCore, QtGui
 
 
 from pyVerifGUI.gui.models.coverage import CoverageMessageModel, CoverageDiffMessageModel, MessageType
-from pyVerifGUI.gui.base_tab import is_tab
-
-
 from pyVerifGUI.gui.tabs.messageview import MessageViewTab
+from pyVerifGUI.gui.base_tab import is_tab
 
 
 @is_tab
@@ -28,6 +28,7 @@ class CoverageViewTab(MessageViewTab):
     _name = "coverage"
     _display = "Coverage"
     _tool_tip = "No coverage messages available! Please run coverage parsing from the Overview."
+
 
     def _post_init(self):
         super()._post_init(CoverageMessageModel,
@@ -81,8 +82,13 @@ class CoverageViewTab(MessageViewTab):
         self.dialog.row_text.setText(str(waiver["row"]))
         self.dialog.row_text.setReadOnly(True)
         self.dialog.author_text.setText(waiver["author"])
-        # TODO set reason select properly
-        #self.dialog.reason_select.setCurrentText
+
+        # Set reason
+        for i in range(self.dialog.reason_select.model().rowCount()):
+            item = self.dialog.reason_select.model().item(i)
+            if waiver["reason"] == item.text():
+                self.dialog.reason_select.setCurrentIndex(i)
+
         self.dialog.explanation_text.setText(waiver["explanation"])
         self.dialog.text = waiver["text"]
         self.dialog.text_hash = waiver["text_hash"]
@@ -180,9 +186,28 @@ Waiving reason: {waiver['reason']}
         else:
             return ""
 
+    def modelUpdate(self):
+        """Override MessageView modelUpdate to update the reasons when we change config"""
+        super().modelUpdate()
+        new_reasons = self.config.config.get("coverage", {})
+        new_reasons = new_reasons.get("waiver_reasons", [])
+        new_reasons = AddWaiverDialog.BASE_REASONS + new_reasons
+        self.dialog.setReasons(new_reasons)
+
 
 class AddWaiverDialog(QtWidgets.QDialog):
     """Custom dialog to add a new waiver"""
+    BASE_REASONS = [
+        "Covered by Single TC",
+        "Unused signal",
+        "Unused port",
+        "Unreachable state",
+        "Unreachable code",
+        "Not Required",
+        "Other",
+    ]
+
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setModal(True)
@@ -228,15 +253,7 @@ class AddWaiverDialog(QtWidgets.QDialog):
 
         # Add pre-built list of reasons
         self.reason_select.setEditable(True)
-        self.reasons = [
-            "Covered by Single TC",
-            "Unused signal",
-            "Unused port",
-            "Unreachable state",
-            "Unreachable code",
-            "Not Required",
-            "Other",
-        ]
+        self.reasons = self.BASE_REASONS
         for reason in self.reasons:
             self.reason_select.addItem(reason)
 
@@ -255,3 +272,14 @@ class AddWaiverDialog(QtWidgets.QDialog):
         self.layout.addWidget(self.text_label, 5, 0)
         self.layout.addWidget(self.text_text, 5, 1)
         self.layout.addWidget(self.buttonBox, 6, 0, 1, 2)
+
+
+    def setReasons(self, reasons: List[str]):
+        # Clear out old reasons
+        while self.reason_select.count() > 0:
+            self.reason_select.removeItem(0)
+
+        self.reasons = reasons
+        for reason in reasons:
+            self.reason_select.addItem(reason)
+

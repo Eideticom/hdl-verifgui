@@ -10,9 +10,6 @@
 #
 # @brief Configuration editor dialog
 ##############################################################################
-
-# TODO rewrite this whole thing
-
 from qtpy import QtWidgets, QtCore, QtGui
 from pathlib import Path
 from functools import partialmethod
@@ -20,6 +17,11 @@ from yaml import safe_load, dump
 from typing import List
 from glob import glob
 import os
+
+
+from typing import Callable, Any, Optional
+from functools import partial
+
 
 # TODO rework this widget so exception passing out of a constructor is not required.
 class ConfigNotSelected(Exception):
@@ -105,6 +107,9 @@ class ConfigEditor(QtWidgets.QWidget):
         self.save = QtWidgets.QPushButton("Save", self)
         self.save.clicked.connect(self.save_cfg)
 
+        self.coverage_reasons = OptionList(self, self.get_option, self.set_option)
+        self.coverage_label = QtWidgets.QLabel("Extra Coverage Reasons", self)
+
         #### Layout
         self.layout.setColumnStretch(0, 1)
         self.layout.addWidget(self.core_label, 0, 0)
@@ -125,8 +130,10 @@ class ConfigEditor(QtWidgets.QWidget):
         self.layout.addWidget(self.parser_args, 12, 0)
         self.layout.addWidget(self.verilator_label, 13, 0)
         self.layout.addWidget(self.verilator_args, 14, 0)
-        self.layout.addWidget(self.validate_button, 15, 0, 1, 2)
-        self.layout.addWidget(self.save, 16, 0, 1, 2)
+        self.layout.addWidget(self.coverage_label, 15, 0)
+        self.layout.addWidget(self.coverage_reasons, 16, 0)
+        self.layout.addWidget(self.validate_button, 17, 0, 1, 2)
+        self.layout.addWidget(self.save, 18, 0, 1, 2)
 
         if config_path is None:
             dialog = QtWidgets.QFileDialog.getSaveFileName
@@ -143,6 +150,22 @@ class ConfigEditor(QtWidgets.QWidget):
         # TODO causes issue when path is not selected
         self.rtl.config_path = Path(config_path)
         self.load_config(config_path)
+
+
+    def get_option(self, category: str, option: str) -> Optional[Any]:
+        if category in self.config:
+            if option in self.config[category]:
+                return self.config[category][option]
+
+        return None
+
+
+    def set_option(self, category: str, option: str, value: Any):
+        if category not in self.config:
+            self.config[category] = {}
+
+        self.config[category][option] = value
+
 
     def browse_for_core_dir(self):
         """Browse for a directory"""
@@ -223,6 +246,7 @@ class ConfigEditor(QtWidgets.QWidget):
         self.rtl.set_core_dir(self._core_dir_path)
         rtl_dirs = config.get("rtl_dirs")
         self.rtl.update(rtl_dirs, self._core_dir_path)
+        self.coverage_reasons.open()
 
         self.parser_args.setPlainText(config.get("parse_args", ""))
         self.verilator_args.setPlainText(config.get("verilator_args", ""))
@@ -265,6 +289,8 @@ class ConfigEditor(QtWidgets.QWidget):
         self.dump()
 
     def dump(self):
+        self.coverage_reasons.save()
+
         self.config.update({
             "core_dir": self.core_path.text(),
             "working_dir": self.working_path.text(),
@@ -464,3 +490,90 @@ class RtlPath(QtWidgets.QWidget):
     @property
     def include(self):
         return self.path_text.text()
+
+
+# TODO writing this to be as simple as possible to migrate to WIP conf editor system
+class OptionList(QtWidgets.QWidget):
+    category = "coverage"
+    option = "waiver_reasons"
+
+
+    def __init__(self, parent, get_option: Callable, set_option: Callable):
+        self.get_option = partial(get_option, self.category, self.option)
+        self.set_option = partial(set_option, self.category, self.option)
+        # TODO this all needs to get replaced with the correct infrastructure
+        super().__init__(parent)
+        self.init_widgets()
+
+
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+
+        self.action_item = QtWidgets.QWidget(self)
+        self.action_item.setLayout(QtWidgets.QHBoxLayout(self.action_item))
+        # TODO nice icons
+        self.clear_items = QtWidgets.QPushButton("Clear", self.action_item)
+        self.clear_items.clicked.connect(self.clear_items_action)
+        self.add_item = QtWidgets.QPushButton("+", self.action_item)
+        self.add_item.clicked.connect(self.add_item_action)
+        self.action_item.layout().addWidget(self.clear_items)
+        self.action_item.layout().addWidget(self.add_item)
+
+        self.layout().addWidget(self.action_item)
+
+
+    @property
+    def num_items(self) -> int:
+        return self.layout().count() - 1
+
+
+    def add_item_action(self):
+        self.layout().replaceWidget(self.action_item, QtWidgets.QLineEdit(self))
+        self.layout().addWidget(self.action_item)
+
+
+    def clear_items_action(self):
+        rem_list = []
+        for i in range(self.num_items):
+            item = self.layout().itemAt(i).widget()
+            if item.text() == "":
+                rem_list.append(item)
+
+        for rem in rem_list:
+            self.layout().removeWidget(rem)
+            rem.deleteLater()
+
+
+    def open(self):
+        # Clear all items
+        rem_list = []
+        for i in range(self.num_items):
+            item = self.layout().itemAt(i).widget()
+            rem_list.append(item)
+        for rem in rem_list:
+            self.layout().removeWidget(rem)
+            rem.deleteLater()
+
+        items = self.get_option()
+        if items is None:
+            return
+        for item in items:
+            # Add back in each item
+            self.add_item_action()
+            self.layout().itemAt(self.num_items - 1).widget().setText(item)
+
+
+    def validate(self) -> List[str]:
+        # Prune any empty string items
+        self.clear_items_action()
+        return []
+
+
+    def save(self):
+        # For each item, if str != "", add to list and set this option
+        out = []
+        for i in range(self.num_items):
+            out.append(self.layout().itemAt(i).widget().text())
+
+        self.set_option(out)
+
