@@ -191,7 +191,10 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
         """Returns the data associated with an index"""
         if index.isValid():
             if role == QtCore.Qt.DisplayRole:
-                accessor = self.messages.accessors[index.column()]
+                if index.column() == 0:
+                    return index.row()
+
+                accessor = self.messages.accessors[index.column() - 1]
                 data = self.messages[index.row()][accessor]
                 if accessor == "file":
                     if not self.view_full_filenames:
@@ -217,7 +220,9 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
     def headerData(self, column: int, orientation: int, role: int) -> str:
         """Returns the appropriate data for the headers"""
         if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
-            return self.messages.headers[column]
+            if column == 0:
+                return None
+            return self.messages.headers[column - 1]
 
 
 class AbstractDiffMessageModel(AbstractMessageModel):

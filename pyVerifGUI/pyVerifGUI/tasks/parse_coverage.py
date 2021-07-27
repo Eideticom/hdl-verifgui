@@ -89,10 +89,10 @@ class ParseCoverageWorker(Worker):
         uncovered = 0
         total = 0
 
-        # Keeps track of the extra lines that verilator inserts and adjusts for them
-        verilator_correction = 1 # 1 extra comment line at top
-
         for f in cov_files_folder.iterdir():
+            # Keeps track of the extra lines that verilator inserts and adjusts for them
+            verilator_correction = 1 # 1 extra comment line at top
+
             if not f.is_file():
                 continue
 
