@@ -112,10 +112,36 @@ class MessageViewTab(Tab):
         self.text = QtWidgets.QTextEdit(self.message_splitter)
         self.text.setReadOnly(True)
 
+        # Waiver management buttons
+        self.waiver_widget = QtWidgets.QWidget(self)
+        self.waiver_layout = QtWidgets.QHBoxLayout(self.waiver_widget)
+        self.mark_reviewed = QtWidgets.QPushButton("Toggle Reviewed",
+                                                     self.waiver_widget)
+        self.mark_reviewed.clicked.connect(self.markReviewed)
+        self.mark_unimplemented = QtWidgets.QPushButton("Toggle Unimplemented",
+                                                        self.waiver_widget)
+        self.mark_unimplemented.clicked.connect(self.markUnimplemented)
+        self.waiver_edit = QtWidgets.QPushButton("Add/Edit Waiver",
+                                                 self.waiver_widget)
+        self.waiver_edit.clicked.connect(self.addOrEditWaiver)
+        self.waiver_remove = QtWidgets.QPushButton(self.waiver_widget)
+        self.waiver_remove.setText("Remove Waiver")
+        self.waiver_remove.clicked.connect(self.waiverRemove)
+        self.orphan_update = QtWidgets.QPushButton("Update Orphan")
+        self.orphan_update.clicked.connect(self.handleOrphanUpdate)
+        self.orphan_update.setEnabled(False)
+        self.waiver_layout.addStretch()
+        self.waiver_layout.addWidget(self.mark_reviewed)
+        self.waiver_layout.addWidget(self.mark_unimplemented)
+        self.waiver_layout.addWidget(self.waiver_edit)
+        self.waiver_layout.addWidget(self.waiver_remove)
+        self.waiver_layout.addWidget(self.orphan_update)
+
         # Tie message widget together with layout
         self.message_layout.addWidget(self.message_filter_widget)
         self.message_splitter.addWidget(self.message_table)
         self.message_splitter.setStretchFactor(1, 2)
+        self.message_splitter.addWidget(self.waiver_widget)
         self.message_splitter.addWidget(self.text)
         self.message_splitter.setStretchFactor(2, 1)
         self.message_layout.addWidget(self.message_splitter)
@@ -148,31 +174,6 @@ class MessageViewTab(Tab):
         self.extra_splitter.addWidget(self.extra_tabs)
         self.extra_splitter.setStretchFactor(0, 2)
 
-        # Waiver management buttons
-        self.waiver_widget = QtWidgets.QWidget(self)
-        self.waiver_layout = QtWidgets.QHBoxLayout(self.waiver_widget)
-        self.mark_reviewed = QtWidgets.QPushButton("Toggle Reviewed",
-                                                     self.waiver_widget)
-        self.mark_reviewed.clicked.connect(self.markReviewed)
-        self.mark_unimplemented = QtWidgets.QPushButton("Toggle Unimplemented",
-                                                        self.waiver_widget)
-        self.mark_unimplemented.clicked.connect(self.markUnimplemented)
-        self.waiver_edit = QtWidgets.QPushButton("Add/Edit Waiver",
-                                                 self.waiver_widget)
-        self.waiver_edit.clicked.connect(self.addOrEditWaiver)
-        self.waiver_remove = QtWidgets.QPushButton(self.waiver_widget)
-        self.waiver_remove.setText("Remove Waiver")
-        self.waiver_remove.clicked.connect(self.waiverRemove)
-        self.orphan_update = QtWidgets.QPushButton("Update Orphan")
-        self.orphan_update.clicked.connect(self.handleOrphanUpdate)
-        self.orphan_update.setEnabled(False)
-        self.waiver_layout.addStretch()
-        self.waiver_layout.addWidget(self.mark_reviewed)
-        self.waiver_layout.addWidget(self.mark_unimplemented)
-        self.waiver_layout.addWidget(self.waiver_edit)
-        self.waiver_layout.addWidget(self.waiver_remove)
-        self.waiver_layout.addWidget(self.orphan_update)
-
         # Layout configuration
         self.hz_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Orientation.Horizontal, self)
@@ -180,7 +181,6 @@ class MessageViewTab(Tab):
         self.hz_splitter.addWidget(self.extra_splitter)
         self.layout.addWidget(self.hz_splitter)
         self.layout.setStretch(0, 1)
-        self.layout.addWidget(self.waiver_widget)
 
         # Dialogs
         self.empty_fields_dialog = QtWidgets.QMessageBox()
