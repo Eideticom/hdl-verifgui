@@ -550,6 +550,11 @@ class MessageViewTab(Tab):
             self.dumpMessages(self.message_table.model())
             self.displayMessageDetails()
 
+
+    def editorViewFile(self, message: dict):
+        self.editor_tab.viewFile(message["file"], message["lineno"])
+
+
     def onSelection(self, current: QtCore.QItemSelection,
                     previous: QtCore.QItemSelection):
         """Slot for handling selection and filtering based on orphans"""
@@ -566,7 +571,7 @@ class MessageViewTab(Tab):
             self.orphan_tab.modelUpdate([], "")
 
         # Update editor
-        self.editor_tab.viewFile(selection["file"], selection["lineno"])
+        self.editorViewFile(selection)
 
     def handleOrphanUpdate(self, checked=False):
         """Slot to handle clicking orphan update button"""

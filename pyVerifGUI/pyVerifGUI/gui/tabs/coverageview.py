@@ -44,6 +44,10 @@ class CoverageViewTab(MessageViewTab):
         return (True, "View Coverage Issues")
 
 
+    def editorViewFile(self, message: dict):
+        self.editor_tab.viewFile(message["file"], message["cov_file_lineno"])
+
+
     def openFile(self):
         """Overriding MessageViewTab implementation because the path needs to be managed"""
         selection_model = self.message_table.selectionModel()
