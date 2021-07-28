@@ -45,7 +45,17 @@ class CoverageViewTab(MessageViewTab):
 
 
     def editorViewFile(self, message: dict):
-        self.editor_tab.viewFile(message["file"], message["cov_file_lineno"])
+        try:
+            lineno = message["cov_file_lineno"]
+        except KeyError:
+            model: CoverageMessageModel = self.message_table.model()
+            lineno = None
+            for _message in model.all_messages:
+                if model.isMessageEqual(message, _message):
+                    lineno = _message["cov_file_lineno"]
+
+        if lineno is not None:
+            self.editor_tab.viewFile(message["file"], lineno)
 
 
     def openFile(self):
