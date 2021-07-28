@@ -359,12 +359,14 @@ class MessageViewTab(Tab):
     def markMessageAttribute(self, attribute):
         selection_model = self.message_table.selectionModel()
         if selection_model.hasSelection():
-            # TODO I don't believe internalPointer is the correct way here
-            message = selection_model.selection().indexes()[0].internalPointer()
-            if self.checkIfMessage(message):
-                message.update({attribute: not message.get(attribute, False)})
-                self.dumpMessages(self.message_table.model())
-                self.modelUpdate()
+            rows_selected = selection_model.selectedRows()
+            for row in rows_selected:
+                message: False = row.internalPointer()
+                if self.checkIfMessage(message):
+                    message.update({attribute: not message.get(attribute, False)})
+
+            self.dumpMessages(self.message_table.model())
+            self.modelUpdate()
 
 
     def markReviewed(self, checked=False):
