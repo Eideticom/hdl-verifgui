@@ -134,10 +134,6 @@ class OverviewTab(QtWidgets.QWidget):
         """Updates config to clarify editing"""
         self.config_selected = True
 
-    def loadConfigInEditor(self, location: str):
-        """Slot that loads the emitted config location into the editor"""
-        self.config_editor.loadFile(location, always_new=False)
-
     def gitStatus(self):
         """Runs `git status` and updates text box"""
         if self.config.core_dir_path is not None:

@@ -10,32 +10,19 @@
 #
 # @brief Configuration editor dialog
 ##############################################################################
-
-# TODO rewrite this whole thing
-
-from PySide2.QtCore import Qt
-from qtpy import QtWidgets, QtCore, QtGui
-from typing import List, Any, Optional, Text
-from functools import partialmethod
-from yaml import safe_load, dump
+from qtpy import QtWidgets, QtCore
+from typing import List, Any, Optional
+from oyaml import safe_load, dump, load, Loader
 from pathlib import Path
 from glob import glob
-import functools
 import os
-
-from pyVerifGUI.gui.config import Config
 
 
 # TODO rework this widget so exception passing out of a constructor is not required.
 class ConfigNotSelected(Exception):
     """Exception for passing errors up out of editor object"""
 
-"""
-What functionality do I need to expose?
 
-I need some base plugins, that go in the main category
-
-"""
 # TODO will need to catch these errors and print what class failed to initialize
 # TODO need to provide a way to raise an issue when openning config, perhaps specific exceptions in open()?
 class ConfigEditorOption(QtWidgets.QWidget):
@@ -59,6 +46,19 @@ class ConfigEditorOption(QtWidgets.QWidget):
     # Signal to emit whenever data is updated. Triggers a `save` call and updates
     # the cached config
     updated = QtCore.Signal()
+
+
+    @property
+    def category(self) -> str:
+        """Category to place option under - set by register_config_option decorator"""
+        raise NotImplementedError
+
+
+    @property
+    def option(self) -> str:
+        """Option name - set by register_config_option decorator"""
+        raise NotImplementedError
+
 
     def init_widgets(self):
         """Subclass initialization, do *NOT* re-impliment init, instead use this"""
@@ -88,7 +88,7 @@ class ConfigEditorOption(QtWidgets.QWidget):
         """
         raise NotImplementedError
 
-    def __init__(self, parent, cfg):
+    def __init__(self, parent, cfg: dict):
         super().__init__(parent)
         self.config = cfg
         self.init_widgets()
@@ -148,12 +148,11 @@ class ConfigEditorDialog(QtWidgets.QDialog):
 
         # TODO seems to be too many layers, idk if that affects anything?
         # Not sure how to reduce the number of layers.
-        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.setLayout(QtWidgets.QVBoxLayout(self))
         self.scroll_area = QtWidgets.QScrollArea(self)
         self.layout().addWidget(self.scroll_area)
         self.cfg_widget = QtWidgets.QWidget(self.scroll_area)
         self.cfg_widget.setLayout(QtWidgets.QVBoxLayout(self.cfg_widget))
-        #self.scroll_area.setWidget(QtWidgets.QLabel("DUAIWBDWIUABDWAUID", self.scroll_area))
         self.categories = []
 
         self.config = {}
@@ -164,7 +163,7 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         for opt in sorted([opt for opt in config_options if opt.category != "main"], key=lambda key: key.category):
             if opt.category not in self.options:
                 self.options[opt.category] = {}
-            self.options["main"][opt.option] = opt
+            self.options[opt.category][opt.option] = opt
 
         for cat in self.options:
             category = QtWidgets.QWidget(self.cfg_widget)
@@ -177,6 +176,7 @@ class ConfigEditorDialog(QtWidgets.QDialog):
                 _opt = self.options[cat][opt](category, self.config)
                 category.layout().addWidget(_opt)
                 self.options[cat][opt] = _opt
+                _opt.updated.connect(self.save_options)
 
             self.categories.append(category)
 
@@ -196,20 +196,38 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         self.buttons.layout().addWidget(self.validate)
         self.buttons.layout().addWidget(self.save)
 
+        self.layout().addWidget(self.buttons)
+
 
     def validate_action(self):
         self._validate()
 
 
-    def _validate(self) -> bool:
-        pass
+    def _validate(self) -> List[str]:
+        errors = []
+        for cat in self.options.values():
+            for opt in cat.values():
+                errors.extend(opt.validate())
+
+        return errors
 
 
     def save_action(self):
-        pass
-        #if self.validate_action():
-        #    for
-        #    # Now we save
+        """Save configuration to disk"""
+        errors = self._validate()
+        if len(errors) == 0:
+            config_path = self.config["config_path"]
+            self.config.__delitem__("config_path")
+            with open(str(config_path), 'w') as f:
+                dump(self.config, f)
+            self.config["config_path"] = config_path
+
+
+    def save_options(self):
+        """Ensure options are updated in cache"""
+        for cat in self.options.values():
+            for opt in cat.values():
+                opt.save()
 
 
     def open(self, config_path = None) -> bool:
@@ -217,13 +235,34 @@ class ConfigEditorDialog(QtWidgets.QDialog):
 
         Returns True when dialog succeeds
         """
+        # TODO evaluate status of dialog
         self.exec_()
+        return False
+
+
+    def open_config(self, config_path = None):
+        # TODO there is no error handling here...
+        if config_path is not None:
+            with open(str(config_path)) as f:
+                # TODO maybe hide this behind a seperate Config object or something,
+                # so I can pass it once and update it more easily
+                self.config.update(load(f, Loader=Loader))
+
+        self.config["config_path"] = config_path
+        for cat in self.options.values():
+            for opt in cat.values():
+                opt.open()
 
 
 class TextOption(ConfigEditorOption):
     @property
     def _label(self) -> str:
         raise NotImplementedError
+
+
+    @property
+    def _optional(self) -> bool:
+        return True
 
 
     def init_widgets(self):
@@ -238,15 +277,18 @@ class TextOption(ConfigEditorOption):
         value = self.get_option()
         if value is not None:
             self.text.setText(value)
+        else:
+            self.text.setText("")
 
 
     def save(self):
-        txt = self.text.text()
-        if len(txt) > 0:
-            self.set_option(txt)
+        self.set_option(self.text.text())
 
 
     def validate(self) -> List[str]:
+        if not self._optional and len(self.text.text()) == 0:
+            return [f"{self._label} must contain some value!"]
+
         return []
 
 
@@ -299,12 +341,11 @@ class FolderOption(ConfigEditorOption):
 
 
     def open(self):
-        if self.config[self.category] is not None:
-            if self.config[self.category][self.option] is not None:
-                self.path.setText(self.config[self.category][self.option])
-                return
-
-        self.path.setText("")
+        value = self.get_option()
+        if value is not None:
+            self.path.setText(value)
+        else:
+            self.path.setText("")
 
 
     def save(self):
@@ -348,7 +389,7 @@ class CoreDir(FolderOption):
         if self.path.text():
             start_path = self.path.text()
         else:
-            start_path = ""
+            start_path = self.config["config_path"]
 
         dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, start_path)
         if dir:
@@ -370,12 +411,37 @@ class CoreDir(FolderOption):
 @register_config_option("main", "working_dir")
 class WorkingDir(FolderOption):
     _label = "Working Directory"
-    _dialog_tile = "Working Directory"
+    _dialog_title = "Choose a working directory:"
 
 
 @register_config_option("main", "top_module")
 class TopModule(TextOption):
     _label = "Top Module"
+    _optional = False
+
+
+@register_config_option("main", "repo_name")
+class RepoName(TextOption):
+    _label = "Repository Name"
+    _optional = True
+
+
+@register_config_option("cocotb", "working_dir")
+class CocoTBWorkingDir(FolderOption):
+    _label = "CocoTB Base Directory"
+    _dialog_title = "Choose base CocoTB directory:"
+
+
+@register_config_option("parser", "extra_args")
+class ParserArgs(TextOption):
+    _label = "Extra SV Parser Arguments"
+    _optional = True
+
+
+@register_config_option("linter", "extra_args")
+class VerilatorLinterArgs(TextOption):
+    _label = "Extra Verilator Linter Arguments"
+    _optional = True
 
 
 class ConfigEditor(QtWidgets.QWidget):
