@@ -10,12 +10,15 @@
 #
 # @brief Configuration editor dialog
 ##############################################################################
-from qtpy import QtWidgets, QtCore
 from typing import List, Any, MutableMapping, Optional
 from oyaml import safe_load, dump, load, Loader
+from functools import partial
 from pathlib import Path
 from glob import glob
 import os
+
+
+from qtpy import QtWidgets, QtCore
 
 
 class ConfigStorage(MutableMapping):
@@ -291,7 +294,6 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         # TODO there is no error handling here...
         if config_path is not None:
             with open(str(config_path)) as f:
-                # TODO maybe hide this behind a seperate Config object or something,
                 # so I can pass it once and update it more easily
                 self.config.storage = load(f, Loader=Loader)
 
@@ -495,96 +497,76 @@ class OptionList(ConfigEditorOption):
 class RtlIncludes(ConfigEditorOption):
     """Widget to manage file/folder includes"""
     def init_widgets(self):
-        self.layout = QtWidgets.QVBoxLayout(self)
+        self.setLayout(QtWidgets.QVBoxLayout(self))
         self.label = QtWidgets.QLabel("RTL Includes", self)
-        self.layout.addWidget(self.label)
+        self.layout().addWidget(self.label)
 
         self.add_widget = QtWidgets.QWidget(self)
         self.add_layout = QtWidgets.QHBoxLayout(self.add_widget)
         self.add_file = QtWidgets.QPushButton("Add File", self.add_widget)
-        self.add_file.clicked.connect(self._add_file)
+        self.add_file.clicked.connect(partial(self._add_path, path_type="file"))
         self.add_folder = QtWidgets.QPushButton("Add Folder", self.add_widget)
-        self.add_folder.clicked.connect(self._add_folder)
+        self.add_folder.clicked.connect(partial(self._add_path, path_type="folder"))
 
         self.add_layout.addWidget(self.add_file)
         self.add_layout.addWidget(self.add_folder)
 
-        self.layout.addWidget(self.add_widget)
-
-        self.config_path = config_path
-        self.core_dir = None
+        self.layout().addWidget(self.add_widget)
 
 
     def open(self):
-        pass
-
-
-    def validate(self):
-        pass
+        """Updates the widgets to display"""
+        # TODO delete old widgets
+        rtl = self.get_option()
+        if rtl:
+            for path in rtl:
+                self._add_path(path=path, path_type="file")
 
 
     def save(self):
-        pass
-
-    def set_core_dir(self, core_dir):
-        """Required so new configs can appropriately select files based on correct core dir"""
-        self.core_dir = core_dir
-
-    def update(self, rtl: List, core_dir):
-        """Updates the widgets to display"""
-        self.core_dir = Path(core_dir)
-
-        if rtl:
-            for path in rtl:
-                self._add_file(file=path)
-
-    def dump(self):
         """Dump settings as a dictionary"""
         files = []
 
-        for i in range(self.layout.count()):
-            include = self.layout.itemAt(i).widget()
+        for i in range(1, self.layout().count()):
+            include = self.layout().itemAt(i).widget()
             if include is not self.add_widget:
                 files.append(str(include.include))
 
-        return files
+        self.set_option(files)
 
-    def _add_file(self, checked=False, file=""):
-        """Adds a file to include"""
-        rtl_file = RtlPath(self, file, self.config_path.parent / self.core_dir)
-        rtl_file.remove.connect(lambda: self.remove(rtl_file))
-        rtl_file.path_text.setText(file)
-        self.layout.replaceWidget(self.add_widget, rtl_file)
-        self.layout.addWidget(self.add_widget)
-        if not file:
-            rtl_file.browse(path_type="file")
 
-    def _add_folder(self, checked=False, folder=""):
-        """Adds a folder to include"""
-        rtl_folder = RtlPath(self, folder, self.config_path.parent / self.core_dir)
-        rtl_folder.remove.connect(lambda: self.remove(rtl_folder))
-        rtl_folder.path_text.setText(folder)
-        self.layout.replaceWidget(self.add_widget, rtl_folder)
-        self.layout.addWidget(self.add_widget)
-        if not folder:
-            rtl_folder.browse(path_type="folder")
+    def _add_path(self, checked=False, path="", path_type: str = "file"):
+        rtl_path = RtlPath(self, path, self.core_dir)
+        rtl_path.remove.connect(lambda: self.remove(rtl_path))
+        rtl_path.updated.connect(self.updated)
+        rtl_path.path_text.setText(path)
+        self.layout().replaceWidget(self.add_widget, rtl_path)
+        self.layout().addWidget(self.add_widget)
+        if not path:
+            rtl_path.browse(path_type=path_type)
+
+        self.updated.emit()
+
 
     def remove(self, include: QtWidgets.QWidget):
         """Removes a file or folder"""
-        self.layout.removeWidget(include)
+        self.layout().removeWidget(include)
         include.deleteLater()
 
-    def validate(self, _core_dir: Path) -> List[str]:
+        self.updated.emit()
+
+    def validate(self) -> List[str]:
         """Validates all RTL files"""
         errors = []
-        for i in range(self.layout.count()):
-            include = self.layout.itemAt(i).widget()
+        # Skip initial label
+        for i in range(1, self.layout().count()):
+            include: RtlPath = self.layout().itemAt(i).widget()
             if include is not self.add_widget:
                 if include.include == "":
                     errors.append("One or more files/folders does not have a selection")
                     return errors
 
-                path = _core_dir / include.include
+                path = self.core_dir / include.include
                 # Check that the file/folder exists
                 if not path.exists():
                     # Check globs if we can't find a specific file
@@ -600,8 +582,9 @@ class RtlPath(QtWidgets.QWidget):
 
     # Signals up that this folder should be removed
     remove = QtCore.Signal()
+    updated = QtCore.Signal()
 
-    def __init__(self, parent, folder: str, core_dir):
+    def __init__(self, parent, folder: str, core_dir: Path):
         super().__init__(parent)
 
         self.core_dir = core_dir
@@ -643,6 +626,7 @@ class RtlPath(QtWidgets.QWidget):
                 path = path.parent
 
         self.path_text.setText(str(path))
+        self.updated.emit()
 
     def browse(self, path_type: str = "folder"):
         """Browse to replace current folder"""
@@ -743,5 +727,10 @@ class VerilatorLinterArgs(TextOption):
 
 @register_config_option("coverage", "waiver_reasons")
 class WaiverReasons(OptionList):
+    pass
+
+
+@register_config_option("main", "rtl")
+class _RtlIncludes(RtlIncludes):
     pass
 
