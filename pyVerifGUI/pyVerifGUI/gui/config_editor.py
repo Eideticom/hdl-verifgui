@@ -150,6 +150,7 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         # Not sure how to reduce the number of layers.
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.scroll_area = QtWidgets.QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
         self.layout().addWidget(self.scroll_area)
         self.cfg_widget = QtWidgets.QWidget(self.scroll_area)
         self.cfg_widget.setLayout(QtWidgets.QVBoxLayout(self.cfg_widget))
@@ -371,6 +372,86 @@ class FolderOption(ConfigEditorOption):
         return []
 
 
+class OptionList(ConfigEditorOption):
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+
+        self.action_item = QtWidgets.QWidget(self)
+        self.action_item.setLayout(QtWidgets.QHBoxLayout(self.action_item))
+        # TODO nice icons
+        self.clear_items = QtWidgets.QPushButton("Clear", self.action_item)
+        self.clear_items.clicked.connect(self.clear_items_action)
+        self.add_item = QtWidgets.QPushButton("+", self.action_item)
+        self.add_item.clicked.connect(self.add_item_action)
+        self.action_item.layout().addWidget(self.clear_items)
+        self.action_item.layout().addWidget(self.add_item)
+
+        self.layout().addWidget(self.action_item)
+
+
+    @property
+    def num_items(self) -> int:
+        return self.layout().count() - 1
+
+
+    def add_item_action(self):
+        new_widget = QtWidgets.QLineEdit(self)
+        #self.layout().replaceWidget(self.action_item, QtWidgets.QLineEdit(self))
+        self.layout().replaceWidget(self.action_item, new_widget)
+        print("-"*20)
+        print(new_widget.sizeHint())
+        print(new_widget.minimumSize())
+        print(new_widget.maximumSize())
+        self.layout().addWidget(self.action_item)
+        self.updateGeometry()
+
+
+    def clear_items_action(self):
+        rem_list = []
+        for i in range(self.num_items):
+            item = self.layout().itemAt(i).widget()
+            if item.text() == "":
+                rem_list.append(item)
+
+        for rem in rem_list:
+            self.layout().removeWidget(rem)
+            rem.deleteLater()
+
+
+    def open(self):
+        # Clear all items
+        rem_list = []
+        for i in range(self.num_items):
+            item = self.layout().itemAt(i).widget()
+            rem_list.append(item)
+        for rem in rem_list:
+            self.layout().removeWidget(rem)
+            rem.deleteLater()
+
+        items = self.get_option()
+        if items is None:
+            return
+        for item in items:
+            # Add back in each item
+            self.add_item_action()
+            self.layout().itemAt(self.num_items - 1).widget().setText(item)
+
+
+    def validate(self) -> List[str]:
+        # Prune any empty string items
+        self.clear_items_action()
+        return []
+
+
+    def save(self):
+        # For each item, if str != "", add to list and set this option
+        out = []
+        for i in range(self.num_items):
+            out.append(self.layout().itemAt(i).widget().text())
+
+        self.set_option(out)
+
+
 ##############################################################################
 # Default Config Options
 @register_config_option("main", "core_dir")
@@ -442,6 +523,11 @@ class ParserArgs(TextOption):
 class VerilatorLinterArgs(TextOption):
     _label = "Extra Verilator Linter Arguments"
     _optional = True
+
+
+@register_config_option("coverage", "waiver_reasons")
+class WaiverReasons(OptionList):
+    pass
 
 
 class ConfigEditor(QtWidgets.QWidget):
