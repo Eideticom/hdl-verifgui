@@ -210,14 +210,14 @@ class AbstractMessageModel(QtCore.QAbstractItemModel):
         if message.get("error", False):
             return QtGui.QColor(0xD0, 0, 0)
         elif self.findWaiver(message) is not None:
-            return QtGui.QColor(0x60, 0x60, 0x60)
+            return QtGui.QColor(0x60, 0x60, 0x60, 200)
         elif not message["waiver"]:
             if message["reviewed"]:
-                return QtGui.QColor(0xFF, 0x45, 0)
+                return QtGui.QColor(0xFF, 169, 0)
             if message["unimplemented"]:
-                return QtGui.QColor(0xD0, 0x20, 0)
+                return QtGui.QColor(0xD0, 0x20, 0, 200)
 
-        return QtGui.QColor(0xD4, 0xD2, 0)
+        return QtGui.QColor(0xE0, 0xD0, 0, 200)
 
     def headerData(self, column: int, orientation: int, role: int) -> str:
         """Returns the appropriate data for the headers"""
