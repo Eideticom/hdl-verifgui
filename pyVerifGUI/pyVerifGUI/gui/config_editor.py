@@ -536,14 +536,14 @@ class RtlIncludes(ConfigEditorOption):
 
 
     def _add_path(self, checked=False, path="", path_type: str = "file"):
-        rtl_path = RtlPath(self, path, self.core_dir)
+        rtl_path = RtlPath(self, path, self.core_dir, path_type)
         rtl_path.remove.connect(lambda: self.remove(rtl_path))
         rtl_path.updated.connect(self.updated)
         rtl_path.path_text.setText(path)
         self.layout().replaceWidget(self.add_widget, rtl_path)
         self.layout().addWidget(self.add_widget)
         if not path:
-            rtl_path.browse(path_type=path_type)
+            rtl_path.browse()
 
         self.updated.emit()
 
@@ -584,7 +584,7 @@ class RtlPath(QtWidgets.QWidget):
     remove = QtCore.Signal()
     updated = QtCore.Signal()
 
-    def __init__(self, parent, folder: str, core_dir: Path):
+    def __init__(self, parent, folder: str, core_dir: Path, path_type="folder"):
         super().__init__(parent)
 
         self.core_dir = core_dir
