@@ -24,7 +24,7 @@ from pathlib import Path
 from qtpy import QtCore, QtWidgets, QtGui
 import copy
 from argparse import Namespace
-from typing import Mapping, Union, Sequence
+from typing import Mapping, Union, Sequence, Optional, Any
 
 
 from pyVerifGUI.gui.config_editor import ConfigEditorDialog
@@ -102,25 +102,6 @@ class Config(QtCore.QObject):
         """Directly initialize configuration, manually assign members"""
         self.core_dir_path = Path(location).parent / config["main"]["core_dir"]
 
-        self.rtl_dir_paths = {}
-
-        """Supports a few different variations:
-
-        ---
-        - dir1
-        - dir2
-        ---
-        - dir1:
-            recurse: bool
-        - dir2
-        ---
-        dir1:
-          recurse: bool
-        dir2: {}
-
-        Translates into final dictionary form
-        """
-        #self.rtl_dir_paths = [self.core_dir_path / path for path in config["rtl_dirs"]]
         self.top_module = config["main"]["top_module"]
         self.config = config
 
@@ -183,3 +164,18 @@ class Config(QtCore.QObject):
         """Save build status to filesystem"""
         if self.build is not None:
             dump(self.status, open(str(self.build_status_path), "w"))
+
+
+    def get_option(self, category: str, option: str) -> Optional[Any]:
+        if category in self.config:
+            if option in self.config[category]:
+                return self.config[category][option]
+
+        return None
+
+
+    def set_option(self, category: str, option: str, value: Any):
+        if not category in self.config:
+            self.config[category] = {}
+
+        self.config[category][option] = value

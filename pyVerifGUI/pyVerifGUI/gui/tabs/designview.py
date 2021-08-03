@@ -73,9 +73,9 @@ class DesignViewTab(Tab):
         self.last_update = time.time()
 
     def _verify(self) -> Tuple[bool, str]:
-        if self.config.config.get("working_dir") is None:
+        if self.config.get_option("main", "working_dir") is None:
             return (False, "Configuration does not have working directory!")
-        if self.config.config.get("rtl_dirs") is None:
+        if self.config.get_option("main", "rtl") is None:
             return (False, "No sources specified")
 
         return (True, "")
