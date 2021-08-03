@@ -6,10 +6,12 @@ from _pytest.reports import TestReport
 from _pytest.config import Config, PytestPluginManager
 from pytest import Item, Session
 
-# 
+# Flag to enable/disable output
 output_enabled = False
 
 # Functions roughly sorted in order of hooks being called
+# NOTE: the function signatures must use the same arg names as specified in the API,
+#       there's a check for that.
 
 def pytest_addoption(parser: Parser, pluginmanager: PytestPluginManager):
     """Adds CLI flag required for plugin to run, so that installation of

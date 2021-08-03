@@ -48,9 +48,9 @@ class LintViewTab(MessageViewTab):
         self.context_menu.addAction(self.view_linter_warning_act)
 
     def _verify(self) -> Tuple[bool, str]:
-        if self.config.config.get("working_dir") is None:
+        if self.config.get_option("main", "working_dir") is None:
             return (False, "Configuration does not have working directory!")
-        if self.config.config.get("rtl_dirs") is None:
+        if self.config.get_option("main", "rtl") is None:
             return (False, "No sources specified")
 
         return (True, "")

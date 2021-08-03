@@ -24,7 +24,10 @@ from pathlib import Path
 from qtpy import QtCore, QtWidgets, QtGui
 import copy
 from argparse import Namespace
-from typing import Mapping, Union, Sequence
+from typing import Mapping, Union, Sequence, Optional, Any
+
+
+from pyVerifGUI.gui.config_editor import ConfigEditorDialog
 
 ConfigType = Mapping[str, Union[Sequence[str], str, int, float]]
 
@@ -91,53 +94,22 @@ class Config(QtCore.QObject):
         """I don't like typing self.config.config everywhere so "directly" access the config dictionary"""
         return self.config[item]
 
-    def validate_config(self, config: ConfigType, config_location) -> bool:
+    def validate_config(self, config_location: os.PathLike) -> bool:
         """Checks as much of the config as possible to determine if it is valid"""
-        # Import some important variables
-        try:
-            core_dir_path = Path(config_location).parent / config["core_dir"]
-        except KeyError:
-            self.log_output.emit(
-                "<CONFIG> missing 'core_dir'")
-            return False
-
-        if not core_dir_path.exists() or not core_dir_path.is_dir():
-            self.log_output.emit(
-                f"<CONFIG> incorrect 'core_dir', verify the following path: {core_dir_path}"
-            )
-            return False
-
-        return True
+        dialog = ConfigEditorDialog(None)
+        dialog.open_config(config_location)
+        return not len(dialog._validate()) > 0
 
     def _open_config(self, config: ConfigType, location: str):
         """Directly initialize configuration, manually assign members"""
-        self.core_dir_path = Path(location).parent / config["core_dir"]
+        self.core_dir_path = Path(location).parent / config["main"]["core_dir"]
 
-        self.rtl_dir_paths = {}
-
-        """Supports a few different variations:
-
-        ---
-        - dir1
-        - dir2
-        ---
-        - dir1:
-            recurse: bool
-        - dir2
-        ---
-        dir1:
-          recurse: bool
-        dir2: {}
-
-        Translates into final dictionary form
-        """
-        self.rtl_dir_paths = [self.core_dir_path / path for path in config["rtl_dirs"]]
-        self.top_module = config["top_module"]
+        self.top_module = config["main"]["top_module"]
         self.config = config
 
         # Ensure builds directory exists
         self.builds_path = self.core_dir_path / Path(
-            config["working_dir"]) / "builds"
+            config["main"]["working_dir"]) / "builds"
         self.builds_path.mkdir(exist_ok=True, parents=True)
 
         # Generate list of builds
@@ -156,7 +128,7 @@ class Config(QtCore.QObject):
         if Path(location).exists():
             self.new_config_selected.emit(location)
             config = safe_load(open(location))
-            if self.validate_config(config, location):
+            if self.validate_config(location):
                 self.config_path = location
                 self._open_config(config, location)
             else:
@@ -197,3 +169,18 @@ class Config(QtCore.QObject):
         """Save build status to filesystem"""
         if self.build is not None:
             dump(self.status, open(str(self.build_status_path), "w"))
+
+
+    def get_option(self, category: str, option: str) -> Optional[Any]:
+        if category in self.config:
+            if option in self.config[category]:
+                return self.config[category][option]
+
+        return None
+
+
+    def set_option(self, category: str, option: str, value: Any):
+        if not category in self.config:
+            self.config[category] = {}
+
+        self.config[category][option] = value

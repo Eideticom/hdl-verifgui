@@ -10,400 +10,563 @@
 #
 # @brief Configuration editor dialog
 ##############################################################################
-from qtpy import QtWidgets, QtCore, QtGui
+from typing import List, Any, MutableMapping, Optional
+from oyaml import safe_load, dump, load, Loader
+from functools import partial
 from pathlib import Path
-from functools import partialmethod
-from yaml import safe_load, dump
-from typing import List
 from glob import glob
 import os
 
 
-from typing import Callable, Any, Optional
-from functools import partial
+from qtpy import QtWidgets, QtCore
+
+
+class ConfigStorage(MutableMapping):
+    def __init__(self, storage: dict):
+        self.storage = storage
+
+
+    def __getitem__(self, key):
+        return self.storage[key]
+
+
+    def __setitem__(self, key, value):
+        self.storage[key] = value
+
+
+    def __delitem__(self, key):
+        self.storage.__delitem__(key)
+
+
+    def __iter__(self):
+        return self.storage.__iter__()
+
+
+    def __len__(self):
+        return self.storage.__len__()
+
+
+    def update(self, values):
+        self.storage.update(values) 
 
 
 # TODO rework this widget so exception passing out of a constructor is not required.
 class ConfigNotSelected(Exception):
     """Exception for passing errors up out of editor object"""
 
-class ConfigEditorDialog(QtWidgets.QDialog):
-    """Dialog for editing config"""
-    def __init__(self, parent):
-        super().__init__(parent)
 
-        self.layout = QtWidgets.QHBoxLayout(self)
-        self.editor = None
+# TODO will need to catch these errors and print what class failed to initialize
+# TODO need to provide a way to raise an issue when openning config, perhaps specific exceptions in open()?
+class ConfigEditorOption(QtWidgets.QWidget):
+    """Option "plugin" to use to extend the configuration editor.
+    Several examples are present in config_editor.py, that are already used in the configuration.
 
-    def open(self, config_path = None) -> bool:
-        """Opens dialog for editing config
+    Use `register_config_option` as a decorator to add an option to the configuration editor.
+    Provide the decorator with a category and option, which will be used to sort the items, as
+    shown below (breadth-first alphabetical order):
 
-        Returns one when dialog succeeds
+    main_option_1: value
+    main_option_2: value
+    category:
+      option: value
+    category2:
+      option: value
+
+    Any ConfigEditorOption is passed the value under its specified category/value pair.
+    Options with category "Main" exist on the top level.
+    """
+    # Signal to emit whenever data is updated. Triggers a `save` call and updates
+    # the cached config
+    updated = QtCore.Signal()
+
+
+    @property
+    def category(self) -> str:
+        """Category to place option under - set by register_config_option decorator"""
+        raise NotImplementedError
+
+
+    @property
+    def option(self) -> str:
+        """Option name - set by register_config_option decorator"""
+        raise NotImplementedError
+
+
+    def init_widgets(self):
+        """Subclass initialization, do *NOT* re-impliment init, instead use this"""
+        raise NotImplementedError
+
+    def open(self):
+        """Called when a configuration is opened. Expected to fill data in to widgets.
+
+        Do so safely, catch any exceptions and default to empty
         """
-        # XXX Would be better to add in proper signalling to change path
-        # rather than just rebuilding.
-        if self.layout.count():
-            self.layout.removeWidget(self.editor)
-            self.editor.deleteLater()
+        raise NotImplementedError
 
-        try:
-            self.editor = ConfigEditor(self, config_path)
-        except ConfigNotSelected:
-            return False
+    def validate(self) -> List[str]:
+        """Called when running validate step.
 
-        self.editor.save.clicked.connect(self.accept)
-        self.layout.addWidget(self.editor)
+        Returns list of issues with the configuration
 
-        return self.exec_()
+        Only options under the "Main" category will be errors, all else will be treated as warnings
+        """
+        raise NotImplementedError
 
+    def save(self):
+        """Called when save gets entered. Should save to the config dictionary.
 
-class ConfigEditor(QtWidgets.QWidget):
-    """Widget to create or edit configuration files in a consistent manner"""
-    def __init__(self, parent=None, config_path=None):
+        This is required because some widgets don't have a handy built in way to do this, just
+        the way they are designed.
+        """
+        raise NotImplementedError
+
+    def __init__(self, parent, cfg: ConfigStorage):
         super().__init__(parent)
-
-        self._core_dir_path = None
-
-        self.layout = QtWidgets.QGridLayout(self)
-
-        # core dir
-        self.core_label = QtWidgets.QLabel("Top level location", self)
-        self.core_path = QtWidgets.QLineEdit(self)
-        self.core_path.setReadOnly(True)
-        self.browse_core_path = QtWidgets.QPushButton("Browse", self)
-        self.browse_core_path.clicked.connect(self.browse_for_core_dir)
-        # working_dir
-        self.working_label = QtWidgets.QLabel("Working directory (to store builds in)", self)
-        self.working_path = QtWidgets.QLineEdit(self)
-        self.browse_working_path = QtWidgets.QPushButton("Browse", self)
-        self.browse_working_path.clicked.connect(self.browse_for_working_dir)
-        # top_module
-        self.top_label = QtWidgets.QLabel("Top-level module", self)
-        self.top_module = QtWidgets.QLineEdit(self)
-        # Repo name
-        self.repo_label = QtWidgets.QLabel("Repository name (optional)", self)
-        self.repo_name = QtWidgets.QLineEdit(self)
-        # cocotb/pytest folder (temp until config gets re-written)
-        self.cocotb_label = QtWidgets.QLabel("CocoTB/pytest location", self)
-        self.cocotb_path = QtWidgets.QLineEdit(self)
-        self.cocotb_browse = QtWidgets.QPushButton("Browse", self)
-        self.cocotb_browse.clicked.connect(self.browse_for_cocotb_dir)
-
-        # rtl
-        self.rtl = RtlIncludes(self, config_path)
-
-        # Extra parser arguments
-        # XXX parser should just be integrated, so these should be options
-        self.parser_label = QtWidgets.QLabel("Extra parser arguments (optional)", self)
-        self.parser_args = QtWidgets.QPlainTextEdit(self)
-
-        # Extra verilator lint arguments
-        self.verilator_label = QtWidgets.QLabel("Verilator linting arguments (optional)", self)
-        self.verilator_args = QtWidgets.QPlainTextEdit(self)
-
-        # Buttons!
-        self.validate_button = QtWidgets.QPushButton("Validate", self)
-        self.validate_button.clicked.connect(self.validate_w_dialog)
-        self.save = QtWidgets.QPushButton("Save", self)
-        self.save.clicked.connect(self.save_cfg)
-
-        self.coverage_reasons = OptionList(self, self.get_option, self.set_option)
-        self.coverage_label = QtWidgets.QLabel("Extra Coverage Reasons", self)
-
-        #### Layout
-        self.layout.setColumnStretch(0, 1)
-        self.layout.addWidget(self.core_label, 0, 0)
-        self.layout.addWidget(self.core_path, 1, 0)
-        self.layout.addWidget(self.browse_core_path, 1, 1)
-        self.layout.addWidget(self.working_label, 2, 0)
-        self.layout.addWidget(self.working_path, 3, 0)
-        self.layout.addWidget(self.browse_working_path, 3, 1)
-        self.layout.addWidget(self.cocotb_label, 4, 0)
-        self.layout.addWidget(self.cocotb_path, 5, 0)
-        self.layout.addWidget(self.cocotb_browse, 5, 1)
-        self.layout.addWidget(self.top_label, 6, 0)
-        self.layout.addWidget(self.top_module, 7, 0)
-        self.layout.addWidget(self.repo_label, 8, 0)
-        self.layout.addWidget(self.repo_name, 9, 0)
-        self.layout.addWidget(self.rtl, 10, 0)
-        self.layout.addWidget(self.parser_label, 11, 0)
-        self.layout.addWidget(self.parser_args, 12, 0)
-        self.layout.addWidget(self.verilator_label, 13, 0)
-        self.layout.addWidget(self.verilator_args, 14, 0)
-        self.layout.addWidget(self.coverage_label, 15, 0)
-        self.layout.addWidget(self.coverage_reasons, 16, 0)
-        self.layout.addWidget(self.validate_button, 17, 0, 1, 2)
-        self.layout.addWidget(self.save, 18, 0, 1, 2)
-
-        if config_path is None:
-            dialog = QtWidgets.QFileDialog.getSaveFileName
-            config_path, _type = dialog(self,
-                                        "Create a configuration file:",
-                                        "./",
-                                        "YAML Files (*.yaml)")
-
-            if not config_path:
-                raise ConfigNotSelected()
-
-        # Update config path for RTL
-        # XXX shouldn't be this direct, unsure how to re-work so constructor is called later on
-        # TODO causes issue when path is not selected
-        self.rtl.config_path = Path(config_path)
-        self.load_config(config_path)
+        self.config = cfg
+        self.init_widgets()
 
 
-    def get_option(self, category: str, option: str) -> Optional[Any]:
-        if category in self.config:
-            if option in self.config[category]:
-                return self.config[category][option]
+    def check_core_dir(self, dialog: bool = False) -> Optional[str]:
+        """Check if core dir exists, also can raise dialog box if it does not."""
+        core_dir = self.config["main"].get("core_dir", None)
+        if core_dir is None and dialog:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Core directory not specified!",
+                "The core directory is not configured, and is necessary for all other paths.")
+
+        return core_dir
+
+
+    @property
+    def core_dir(self) -> Optional[Path]:
+        core_dir = self.config["main"].get("core_dir", None)
+        if core_dir is not None:
+            return Path(self.config["config_path"]).parent / core_dir
 
         return None
 
 
-    def set_option(self, category: str, option: str, value: Any):
-        if category not in self.config:
-            self.config[category] = {}
+    def get_option(self) -> Optional[Any]:
+        if self.category in self.config:
+            if self.option in self.config[self.category]:
+                return self.config[self.category][self.option]
 
-        self.config[category][option] = value
+        return None
 
 
-    def browse_for_core_dir(self):
-        """Browse for a directory"""
-        if self.core_path.text():
-            start_path = self.core_path.text()
+    def set_option(self, value: Any):
+        if not self.category in self.config:
+            self.config[self.category] = {}
+
+        self.config[self.category][self.option] = value
+
+
+config_options: List[ConfigEditorOption] = []
+# TODO migrate other plugins to a similar system... how did I not think of this before?
+#      Way simpler to register and go through a list than search through every import...
+# TODO better exception
+def register_config_option(category: str, option: str):
+    """Decorator to register class as a configuration option"""
+    def wrapper(opt: ConfigEditorOption):
+        # TODO unsure why this doesn't work
+        #if not isinstance(opt, ConfigEditorOption):
+        #    raise Exception("Attempted to register a configuration option that is not a ConfigEditorOption")
+
+        config_options.append(opt)
+        opt.category = category
+        opt.option = option
+        return opt
+
+    return wrapper
+
+
+class ConfigEditorDialog(QtWidgets.QDialog):
+    """Dialog for editing config"""
+    def __init__(self, parent):
+        super().__init__(parent)
+        # TODO this seems to get called twice, why is that?
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+        self.scroll_area = QtWidgets.QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.layout().addWidget(self.scroll_area)
+        self.cfg_widget = QtWidgets.QWidget(self.scroll_area)
+        self.cfg_widget.setLayout(QtWidgets.QVBoxLayout(self.cfg_widget))
+        self.categories = []
+
+        self.config = ConfigStorage({})
+        # Sort options alphabetically, "main" first however
+        self.options = {"main": {}}
+        for opt in [opt for opt in config_options if opt.category == "main"]:
+            self.options["main"][opt.option] = opt
+        for opt in sorted([opt for opt in config_options if opt.category != "main"], key=lambda key: key.category):
+            if opt.category not in self.options:
+                self.options[opt.category] = {}
+            self.options[opt.category][opt.option] = opt
+
+        for cat in self.options:
+            category = QtWidgets.QWidget(self.cfg_widget)
+            self.cfg_widget.layout().addWidget(category)
+            category.setLayout(QtWidgets.QVBoxLayout(category))
+            # TODO maybe nicer widget with a line or something?
+            if cat != "main":
+                category.layout().addWidget(QtWidgets.QLabel(cat, category))
+            for opt in sorted(self.options[cat], key=lambda key: self.options[cat][key].option):
+                _opt = self.options[cat][opt](category, self.config)
+                category.layout().addWidget(_opt)
+                self.options[cat][opt] = _opt
+                _opt.updated.connect(self.save_options)
+
+            self.categories.append(category)
+
+        # See function docs, but the layout of the widget has to be set before
+        # you can add the widget to the scroll area. If you put this before here
+        # nothing will be visible.
+        self.scroll_area.setWidget(self.cfg_widget)
+
+
+        # Management Buttons
+        self.buttons = QtWidgets.QWidget(self)
+        self.buttons.setLayout(QtWidgets.QHBoxLayout(self.buttons))
+        self.validate = QtWidgets.QPushButton("Validate", self.buttons)
+        self.validate.clicked.connect(self.validate_action)
+        self.save = QtWidgets.QPushButton("Save", self.buttons)
+        self.save.clicked.connect(self.save_action)
+        self.buttons.layout().addWidget(self.validate)
+        self.buttons.layout().addWidget(self.save)
+
+        self.layout().addWidget(self.buttons)
+
+
+    def display_errors(self, errors: List[str]):
+        title = f"{len(errors)} found, please correct them"
+        body = "\n".join([f"- {err}" for err in errors])
+        QtWidgets.QMessageBox.warning(self, title, body)
+
+
+    def validate_action(self):
+        errors = self._validate()
+        if len(errors) > 0:
+            self.display_errors(errors)
+
+
+    def _validate(self) -> List[str]:
+        errors = []
+        for cat in self.options.values():
+            for opt in cat.values():
+                errors.extend(opt.validate())
+
+        return errors
+
+
+    def save_action(self):
+        """Save configuration to disk"""
+        errors = self._validate()
+        if len(errors) == 0:
+            config_path = self.config["config_path"]
+            self.config.__delitem__("config_path")
+            with open(str(config_path), 'w') as f:
+                dump(self.config.storage, f)
+            self.config["config_path"] = config_path
         else:
-            start_path = str(self._core_dir_path)
-
-        dialog = QtWidgets.QFileDialog.getExistingDirectory
-        path = dialog(self, "Select Base Directory", start_path)
-
-        # Need to handle it relative to configuration or something
-        if path:
-            path = os.path.relpath(path, self.config_path.parent)
-            self.core_path.setText(path)
-            self._core_dir_path = Path(path)
-            self.rtl.set_core_dir(self._core_dir_path)
-
-    def browse_for_working_dir(self):
-        """Opens a dialog to select the working directory"""
-        # Where you start looking depends on what has been selected
-        if self._core_dir_path is None:
-            return
-
-        if self.working_path.text() != "":
-            start_path = str(self.config_path.parent / self._core_dir_path / self.working_path.text())
-        else:
-            start_path = str(self.config_path.parent / self._core_dir_path)
-
-        dialog = QtWidgets.QFileDialog.getExistingDirectory
-        path = dialog(self, "Select Working Directory", start_path)
-
-        if path:
-            path = os.path.relpath(path, str(self.config_path.parent / self._core_dir_path))
-            self.working_path.setText(path)
+            self.display_errors(errors)
 
 
-    def browse_for_cocotb_dir(self):
-        """Straight copy of browse_for_working_dir. Eventually these options will be genericised
-        and code copying will not be required.
+    def save_options(self):
+        """Ensure options are updated in cache"""
+        for cat in self.options.values():
+            for opt in cat.values():
+                opt.save()
+
+
+    def open(self, config_path = None) -> bool:
+        """Opens dialog for editing config
+
+        Returns True when dialog succeeds
         """
-        if self._core_dir_path is None:
-            return
+        # TODO evaluate status of dialog
+        self.open_config(config_path)
+        self.exec_()
+        return False
 
-        if self.cocotb_path.text() != "":
-            start_path = str(self.config_path.parent / self._core_dir_path / self.cocotb_path.text())
+
+    def open_config(self, config_path = None):
+        # TODO there is no error handling here...
+        if config_path is not None:
+            with open(str(config_path)) as f:
+                # so I can pass it once and update it more easily
+                self.config.storage = load(f, Loader=Loader)
+
+            self.config["config_path"] = config_path
+            for cat in self.options.values():
+                for opt in cat.values():
+                    opt.open()
+
+
+class TextOption(ConfigEditorOption):
+    @property
+    def _label(self) -> str:
+        raise NotImplementedError
+
+
+    @property
+    def _optional(self) -> bool:
+        return True
+
+
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.label = QtWidgets.QLabel(self._label, self)
+        self.text = QtWidgets.QLineEdit(self)
+        self.layout().addWidget(self.label)
+        self.layout().addWidget(self.text)
+
+
+    def open(self):
+        value = self.get_option()
+        if value is not None:
+            self.text.setText(value)
         else:
-            start_path = str(self.config_path.parent / self._core_dir_path)
-
-        dialog = QtWidgets.QFileDialog.getExistingDirectory
-        path = dialog(self, "Select CocoTB/pytest directory", start_path)
-
-        if path:
-            path = os.path.relpath(path, str(self._core_dir_path))
-            self.cocotb_path.setText(path)
+            self.text.setText("")
 
 
-    def load_config(self, path: str):
-        """Loads an existing config into the editor.
+    def save(self):
+        self.set_option(self.text.text())
 
-        If it does not exist, creates a new one
-        """
-        self.config_path = Path(path)
-        if not self.config_path.exists():
-            dump({}, open(str(self.config_path), "w"))
-
-        with open(str(self.config_path)) as fh:
-            config = safe_load(fh.read())
-            self.config = config
-
-
-        self.core_path.setText(config.get("core_dir", ""))
-        self.working_path.setText(config.get("working_dir", ""))
-        self.top_module.setText(config.get("top_module", ""))
-        self.repo_name.setText(config.get("repo_name", ""))
-        self.cocotb_path.setText(config.get("cocotb_path", ""))
-        self._core_dir_path = self.config_path.parent / self.core_path.text()
-        self.rtl.set_core_dir(self._core_dir_path)
-        rtl_dirs = config.get("rtl_dirs")
-        self.rtl.update(rtl_dirs, self._core_dir_path)
-        self.coverage_reasons.open()
-
-        self.parser_args.setPlainText(config.get("parse_args", ""))
-        self.verilator_args.setPlainText(config.get("verilator_args", ""))
 
     def validate(self) -> List[str]:
-        """Validates that the input config settings are correct"""
-        issues = []
+        if not self._optional and len(self.text.text()) == 0:
+            return [f"{self._label} must contain some value!"]
 
-        base_path = self.config_path.parent / self.core_path.text()
-        if not base_path.is_dir():
-            issues.append(f"{self.core_path.text()} is not a directory")
-            return issues
+        return []
 
-        # TODO should there be a validation scheme here? the directory is meant
-        #      to be created...
-        #working_path = base_path / self.working_path.text()
-        #if not working_path.is_dir() or not self.working_path.text():
-        #    issues.append(f"{working_path} is not a directory")
 
-        if not self.top_module.text():
-            issues.append("No top level module specified!")
+class FolderOption(ConfigEditorOption):
+    @property
+    def _force_browse(self) -> bool:
+        """Optional attribute to set which will force the user to use the browse button,
+        i.e. make the text field read-only
+        """
+        return False
 
-        issues.extend(self.rtl.validate(base_path))
-        return issues
+    @property
+    def _label(self) -> str:
+        """Attribute to set label text, required for implementation"""
+        raise NotImplementedError
 
-    def validate_w_dialog(self):
-        issues = self.validate()
+    @property
+    def _dialog_title(self) -> str:
+        raise NotImplementedError
 
-        if len(issues) > 0:
-            info_message = "\n\n".join(issues)
-            QtWidgets.QMessageBox.warning(self, "Issues found in configuration", info_message)
-        else:
-            QtWidgets.QMessageBox.information(self, "Configuration is good!", "No issues found in configuration")
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QHBoxLayout(self))
+        self.layout().addWidget(QtWidgets.QLabel(self._label, self))
 
-    def save_cfg(self):
-        if len(self.validate()) > 0:
-            self.validate_w_dialog()
+        self.path = QtWidgets.QLineEdit(self)
+        self.path.setReadOnly(self._force_browse)
+        self.layout().addWidget(self.path)
+
+        self.browse = QtWidgets.QPushButton("Browse", self)
+        self.browse.clicked.connect(self.browse_action)
+        self.layout().addWidget(self.browse)
+
+
+    def browse_action(self):
+        core_dir = self.check_core_dir()
+        if core_dir is None:
             return
 
-        self.dump()
+        if self.path.text():
+            start_path = self.path.text()
+        else:
+            start_path = self.core_dir
 
-    def dump(self):
-        self.coverage_reasons.save()
+        dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, str(start_path))
+        if dir:
+            dir = Path(dir).relative_to(core_dir)
 
-        self.config.update({
-            "core_dir": self.core_path.text(),
-            "working_dir": self.working_path.text(),
-            "top_module": self.top_module.text(),
-            "repo_name": self.repo_name.text(),
-            "cocotb_path": self.cocotb_path.text(),
-            "rtl_dirs": self.rtl.dump(),
-            "parse_args": self.parser_args.toPlainText(),
-            "verilator_args": self.verilator_args.toPlainText(),
-        })
-
-        dump(self.config, open(str(self.config_path), "w"))
+            self.path.setText(str(dir))
+            self.updated.emit()
 
 
-class RtlIncludes(QtWidgets.QWidget):
-    """Widget to manage RTL file/folder includes
-    
-    
-    What do I need to show?
-    Path to file/dir I guess. On validate, I check if it exists
-    If it is a file, I add "file": true, to the dictionary that describes it
-    Browse button + a remove button
-    The add button needs to exist below list of files
+    def open(self):
+        value = self.get_option()
+        if value is not None:
+            self.path.setText(value)
+        else:
+            self.path.setText("")
 
-    Two widgets, one for a file, and one with add_file and add_dir
 
-    widget for a file has LineEdit, browse button, and remove button, and a recursive
-    check box, which is disabled if it's a file
-    """
-    def __init__(self, parent, config_path):
-        super().__init__(parent)
+    def save(self):
+        txt = self.path.text()
+        if len(txt) > 0:
+            self.set_option(txt)
 
-        self.layout = QtWidgets.QVBoxLayout(self)
+
+    def validate(self) -> List[str]:
+        core_dir = self.core_dir
+        if core_dir is not None:
+            if self.category not in self.config:
+                return []
+            if self.option not in self.config[self.category]:
+                return []
+
+            dir: Path = core_dir / self.config[self.category][self.option]
+            if not dir.exists():
+                return [f"[{self.category}] {self.option}: directory does not exist!"]
+            if not dir.is_dir():
+                return [f"[{self.category}] {self.option}: not a directory!"]
+
+        return []
+
+
+class OptionList(ConfigEditorOption):
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+
+        self.action_item = QtWidgets.QWidget(self)
+        self.action_item.setLayout(QtWidgets.QHBoxLayout(self.action_item))
+        # TODO nice icons
+        self.clear_items = QtWidgets.QPushButton("Clear", self.action_item)
+        self.clear_items.clicked.connect(self.clear_items_action)
+        self.add_item = QtWidgets.QPushButton("+", self.action_item)
+        self.add_item.clicked.connect(self.add_item_action)
+        self.action_item.layout().addWidget(self.clear_items)
+        self.action_item.layout().addWidget(self.add_item)
+
+        self.layout().addWidget(self.action_item)
+
+
+    @property
+    def num_items(self) -> int:
+        return self.layout().count() - 1
+
+
+    def add_item_action(self):
+        self.layout().replaceWidget(self.action_item, QtWidgets.QLineEdit(self))
+        self.layout().addWidget(self.action_item)
+        self.updateGeometry()
+
+
+    def clear_items_action(self):
+        rem_list = []
+        for i in range(self.num_items):
+            item = self.layout().itemAt(i).widget()
+            if item.text() == "":
+                rem_list.append(item)
+
+        for rem in rem_list:
+            self.layout().removeWidget(rem)
+            rem.deleteLater()
+
+
+    def open(self):
+        # Clear all items
+        rem_list = []
+        for i in range(self.num_items):
+            item = self.layout().itemAt(i).widget()
+            rem_list.append(item)
+        for rem in rem_list:
+            self.layout().removeWidget(rem)
+            rem.deleteLater()
+
+        items = self.get_option()
+        if items is None:
+            return
+        for item in items:
+            # Add back in each item
+            self.add_item_action()
+            self.layout().itemAt(self.num_items - 1).widget().setText(item)
+
+
+    def validate(self) -> List[str]:
+        # Prune any empty string items
+        self.clear_items_action()
+        return []
+
+
+    def save(self):
+        # For each item, if str != "", add to list and set this option
+        out = []
+        for i in range(self.num_items):
+            out.append(self.layout().itemAt(i).widget().text())
+
+        self.set_option(out)
+
+
+class RtlIncludes(ConfigEditorOption):
+    """Widget to manage file/folder includes"""
+    def init_widgets(self):
+        self.setLayout(QtWidgets.QVBoxLayout(self))
         self.label = QtWidgets.QLabel("RTL Includes", self)
-        self.layout.addWidget(self.label)
+        self.layout().addWidget(self.label)
 
         self.add_widget = QtWidgets.QWidget(self)
         self.add_layout = QtWidgets.QHBoxLayout(self.add_widget)
         self.add_file = QtWidgets.QPushButton("Add File", self.add_widget)
-        self.add_file.clicked.connect(self._add_file)
+        self.add_file.clicked.connect(partial(self._add_path, path_type="file"))
         self.add_folder = QtWidgets.QPushButton("Add Folder", self.add_widget)
-        self.add_folder.clicked.connect(self._add_folder)
+        self.add_folder.clicked.connect(partial(self._add_path, path_type="folder"))
 
         self.add_layout.addWidget(self.add_file)
         self.add_layout.addWidget(self.add_folder)
 
-        self.layout.addWidget(self.add_widget)
+        self.layout().addWidget(self.add_widget)
 
-        self.config_path = config_path
-        self.core_dir = None
 
-    def set_core_dir(self, core_dir):
-        """Required so new configs can appropriately select files based on correct core dir"""
-        self.core_dir = core_dir
-
-    def update(self, rtl: List, core_dir):
+    def open(self):
         """Updates the widgets to display"""
-        self.core_dir = Path(core_dir)
-
+        # TODO delete old widgets
+        rtl = self.get_option()
         if rtl:
             for path in rtl:
-                if Path(path).is_file():
-                    self._add_file(file=path)
-                else:
-                    self._add_folder(folder=path)
+                self._add_path(path=path, path_type="file")
 
-    def dump(self):
+
+    def save(self):
         """Dump settings as a dictionary"""
         files = []
 
-        for i in range(1, self.layout.count()):
-            include = self.layout.itemAt(i).widget()
+        for i in range(1, self.layout().count()):
+            include = self.layout().itemAt(i).widget()
             if include is not self.add_widget:
                 files.append(str(include.include))
 
-        return files
+        self.set_option(files)
 
-    def _add_file(self, checked=False, file=""):
-        """Adds a file to include"""
-        rtl_file = RtlPath(self, file, self.core_dir, "file")
-        rtl_file.remove.connect(lambda: self.remove(rtl_file))
-        rtl_file.path_text.setText(file)
-        self.layout.replaceWidget(self.add_widget, rtl_file)
-        self.layout.addWidget(self.add_widget)
-        if not file:
-            rtl_file.browse()
 
-    def _add_folder(self, checked=False, folder=""):
-        """Adds a folder to include"""
-        rtl_folder = RtlPath(self, folder, self.core_dir, "folder")
-        rtl_folder.remove.connect(lambda: self.remove(rtl_folder))
-        rtl_folder.path_text.setText(folder)
-        self.layout.replaceWidget(self.add_widget, rtl_folder)
-        self.layout.addWidget(self.add_widget)
-        if not folder:
-            rtl_folder.browse()
+    def _add_path(self, checked=False, path="", path_type: str = "file"):
+        rtl_path = RtlPath(self, path, self.core_dir)
+        rtl_path.remove.connect(lambda: self.remove(rtl_path))
+        rtl_path.updated.connect(self.updated)
+        rtl_path.path_text.setText(path)
+        self.layout().replaceWidget(self.add_widget, rtl_path)
+        self.layout().addWidget(self.add_widget)
+        if not path:
+            rtl_path.browse(path_type=path_type)
+
+        self.updated.emit()
+
 
     def remove(self, include: QtWidgets.QWidget):
         """Removes a file or folder"""
-        self.layout.removeWidget(include)
+        self.layout().removeWidget(include)
         include.deleteLater()
 
-    def validate(self, _core_dir: Path) -> List[str]:
+        self.updated.emit()
+
+    def validate(self) -> List[str]:
         """Validates all RTL files"""
         errors = []
-        for i in range(1, self.layout.count()):
-            include = self.layout.itemAt(i).widget()
+        # Skip initial label
+        for i in range(1, self.layout().count()):
+            include: RtlPath = self.layout().itemAt(i).widget()
             if include is not self.add_widget:
                 if include.include == "":
                     errors.append("One or more files/folders does not have a selection")
                     return errors
 
-                path = _core_dir / include.include
+                path = self.core_dir / include.include
                 # Check that the file/folder exists
                 if not path.exists():
                     # Check globs if we can't find a specific file
@@ -419,8 +582,9 @@ class RtlPath(QtWidgets.QWidget):
 
     # Signals up that this folder should be removed
     remove = QtCore.Signal()
+    updated = QtCore.Signal()
 
-    def __init__(self, parent, folder: str, core_dir, path_type: str):
+    def __init__(self, parent, folder: str, core_dir: Path):
         super().__init__(parent)
 
         self.core_dir = core_dir
@@ -468,6 +632,7 @@ class RtlPath(QtWidgets.QWidget):
                 path = path.parent
 
         self.path_text.setText(str(path))
+        self.updated.emit()
 
     def browse(self):
         """Browse to replace current folder"""
@@ -492,88 +657,86 @@ class RtlPath(QtWidgets.QWidget):
         return self.path_text.text()
 
 
-# TODO writing this to be as simple as possible to migrate to WIP conf editor system
-class OptionList(QtWidgets.QWidget):
-    category = "coverage"
-    option = "waiver_reasons"
+##############################################################################
+# Default Config Options
+@register_config_option("main", "core_dir")
+class CoreDir(FolderOption):
+    """Special configuration option, lots of things overriden from the general
+    defaults because most things are meant to be relative to this option.
+    """
+    # TODO what even do I name things
+    _force_browse = True
+    _label = "Core Directory"
+    _dialog_title = "Project Directory"
 
 
-    def __init__(self, parent, get_option: Callable, set_option: Callable):
-        self.get_option = partial(get_option, self.category, self.option)
-        self.set_option = partial(set_option, self.category, self.option)
-        # TODO this all needs to get replaced with the correct infrastructure
-        super().__init__(parent)
-        self.init_widgets()
+    def browse_action(self):
+        """Overriden for special core_dir case"""
+        if self.path.text():
+            start_path = self.path.text()
+        else:
+            start_path = self.config["config_path"]
 
-
-    def init_widgets(self):
-        self.setLayout(QtWidgets.QVBoxLayout(self))
-
-        self.action_item = QtWidgets.QWidget(self)
-        self.action_item.setLayout(QtWidgets.QHBoxLayout(self.action_item))
-        # TODO nice icons
-        self.clear_items = QtWidgets.QPushButton("Clear", self.action_item)
-        self.clear_items.clicked.connect(self.clear_items_action)
-        self.add_item = QtWidgets.QPushButton("+", self.action_item)
-        self.add_item.clicked.connect(self.add_item_action)
-        self.action_item.layout().addWidget(self.clear_items)
-        self.action_item.layout().addWidget(self.add_item)
-
-        self.layout().addWidget(self.action_item)
-
-
-    @property
-    def num_items(self) -> int:
-        return self.layout().count() - 1
-
-
-    def add_item_action(self):
-        self.layout().replaceWidget(self.action_item, QtWidgets.QLineEdit(self))
-        self.layout().addWidget(self.action_item)
-
-
-    def clear_items_action(self):
-        rem_list = []
-        for i in range(self.num_items):
-            item = self.layout().itemAt(i).widget()
-            if item.text() == "":
-                rem_list.append(item)
-
-        for rem in rem_list:
-            self.layout().removeWidget(rem)
-            rem.deleteLater()
-
-
-    def open(self):
-        # Clear all items
-        rem_list = []
-        for i in range(self.num_items):
-            item = self.layout().itemAt(i).widget()
-            rem_list.append(item)
-        for rem in rem_list:
-            self.layout().removeWidget(rem)
-            rem.deleteLater()
-
-        items = self.get_option()
-        if items is None:
-            return
-        for item in items:
-            # Add back in each item
-            self.add_item_action()
-            self.layout().itemAt(self.num_items - 1).widget().setText(item)
+        dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, start_path)
+        if dir:
+            dir = Path(dir).relative_to(Path(self.config["config_path"]).absolute().parent)
+            self.path.setText(str(dir))
+            self.updated.emit()
 
 
     def validate(self) -> List[str]:
-        # Prune any empty string items
-        self.clear_items_action()
+        """Overriden for special core_dir case"""
+        dir = Path(self.config[self.category][self.option])
+        if not dir.exists():
+            return [f"[{self.category}] {self.option}: directory does not exist!"]
+        if not dir.is_dir():
+            return [f"[{self.category}] {self.option}: not a directory!"]
+
         return []
 
 
-    def save(self):
-        # For each item, if str != "", add to list and set this option
-        out = []
-        for i in range(self.num_items):
-            out.append(self.layout().itemAt(i).widget().text())
+@register_config_option("main", "working_dir")
+class WorkingDir(FolderOption):
+    _label = "Working Directory"
+    _dialog_title = "Choose a working directory:"
 
-        self.set_option(out)
+
+@register_config_option("main", "top_module")
+class TopModule(TextOption):
+    _label = "Top Module"
+    _optional = False
+
+
+@register_config_option("main", "repo_name")
+class RepoName(TextOption):
+    _label = "Repository Name"
+    _optional = True
+
+
+@register_config_option("cocotb", "working_dir")
+class CocoTBWorkingDir(FolderOption):
+    _label = "CocoTB Base Directory"
+    _dialog_title = "Choose base CocoTB directory:"
+
+
+@register_config_option("parser", "extra_args")
+class ParserArgs(TextOption):
+    _label = "Extra SV Parser Arguments"
+    _optional = True
+
+
+@register_config_option("linter", "extra_args")
+class VerilatorLinterArgs(TextOption):
+    _label = "Extra Verilator Linter Arguments"
+    _optional = True
+
+
+@register_config_option("coverage", "waiver_reasons")
+class WaiverReasons(OptionList):
+    pass
+
+
+@register_config_option("main", "rtl")
+class _RtlIncludes(RtlIncludes):
+    pass
 

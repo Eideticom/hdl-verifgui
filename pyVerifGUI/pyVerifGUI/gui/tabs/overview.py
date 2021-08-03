@@ -115,7 +115,7 @@ class OverviewTab(QtWidgets.QWidget):
     def _open_config_editor(self, clicked=False, path=None) -> bool:
         """Slot that opens new configuration editor dialog"""
         config_dialog = ConfigEditorDialog(self)
-        if not path:
+        if path is None:
             if not self.config_selected:
                 rc = config_dialog.open()
                 config_dialog.deleteLater()
@@ -133,10 +133,6 @@ class OverviewTab(QtWidgets.QWidget):
     def config_has_been_selected(self, _path: str):
         """Updates config to clarify editing"""
         self.config_selected = True
-
-    def loadConfigInEditor(self, location: str):
-        """Slot that loads the emitted config location into the editor"""
-        self.config_editor.loadFile(location, always_new=False)
 
     def gitStatus(self):
         """Runs `git status` and updates text box"""

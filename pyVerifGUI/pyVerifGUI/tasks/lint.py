@@ -66,7 +66,7 @@ class LinterWorker(Worker):
         self.cmd_list = [verilator_exe, "--lint-only", "-Wall", "--top-module",
                          config.top_module, "-f", f"{config.build_path.resolve()}/rtlfiles.lst"]
 
-        opts = config.config.get("verilator_args", None)
+        opts = config.get_option("linter", "extra_args")
         self.cmd_list.extend(get_extra_args(opts))
         self.display_cmd()
 
