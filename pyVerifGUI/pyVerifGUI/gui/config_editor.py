@@ -738,6 +738,12 @@ class CocoTBWorkingDir(FolderOption):
     _dialog_title = "Choose base CocoTB directory:"
 
 
+@register_config_option("cocotb", "extra_args")
+class CocoTBArgs(TextOption):
+    _label = "Pytest Arguments"
+    _optional = True
+
+
 @register_config_option("parser", "extra_args")
 class ParserArgs(TextOption):
     _label = "Extra SV Parser Arguments"

@@ -47,7 +47,8 @@ class CocoTB(Task):
         if len(tests) == 0:
             raise Exception("No tests!")
 
-        working_dir = self.config.core_dir_path / self.config["cocotb_path"]
+        # TODO error handling
+        working_dir = self.config.core_dir_path / self.config.get_option("cocotb", "working_dir")
 
         self.worker = TestWorker(self._name, tests, str(working_dir.resolve()), self.config)
         self.worker.signals.result.connect(self.callback)
@@ -102,6 +103,10 @@ class TestWorker(Worker):
             "--hdl-verifgui",
             "-n", str(config.thread_count),
         ]
+        options = config.get_option("cocotb", "extra_args")
+        if options is not None:
+            pytest_cmd.append(options.split(" "))
+
         env = os.environ.copy()
         env["GUI_TEST"] = "True"
         env["LOGLEVEL"] = "WARNING"

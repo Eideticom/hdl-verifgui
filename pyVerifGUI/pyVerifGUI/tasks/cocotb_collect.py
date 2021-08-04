@@ -48,7 +48,7 @@ class CocoTBCollect(Task):
     _description = "Collect all available CocoTB tests"
 
     def _run(self):
-        path = self.config.config.get("cocotb_path", None)
+        path = self.config.get_option("cocotb", "working_dir")
         if path is None or len(path) == 0:
             self.fail("No path configured for cocotb!")
             return
