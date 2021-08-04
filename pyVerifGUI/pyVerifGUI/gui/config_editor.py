@@ -142,7 +142,7 @@ class ConfigEditorOption(QtWidgets.QWidget):
     def core_dir(self) -> Optional[Path]:
         core_dir = self.config["main"].get("core_dir", None)
         if core_dir is not None:
-            return Path(self.config["config_path"]).parent / core_dir
+            return (Path(self.config["config_path"]).parent / core_dir).resolve()
 
         return None
 
@@ -183,6 +183,9 @@ def register_config_option(category: str, option: str):
 
 class ConfigEditorDialog(QtWidgets.QDialog):
     """Dialog for editing config"""
+    updated = QtCore.Signal() # Emitted when configuration is updated
+
+
     def __init__(self, parent):
         super().__init__(parent)
         # TODO this seems to get called twice, why is that?
@@ -224,7 +227,6 @@ class ConfigEditorDialog(QtWidgets.QDialog):
         # nothing will be visible.
         self.scroll_area.setWidget(self.cfg_widget)
 
-
         # Management Buttons
         self.buttons = QtWidgets.QWidget(self)
         self.buttons.setLayout(QtWidgets.QHBoxLayout(self.buttons))
@@ -261,6 +263,7 @@ class ConfigEditorDialog(QtWidgets.QDialog):
 
     def save_action(self):
         """Save configuration to disk"""
+        self.save_options()
         errors = self._validate()
         if len(errors) == 0:
             config_path = self.config["config_path"]
@@ -268,8 +271,11 @@ class ConfigEditorDialog(QtWidgets.QDialog):
             with open(str(config_path), 'w') as f:
                 dump(self.config.storage, f)
             self.config["config_path"] = config_path
+
+            self.updated.emit()
         else:
             self.display_errors(errors)
+
 
 
     def save_options(self):
@@ -293,9 +299,12 @@ class ConfigEditorDialog(QtWidgets.QDialog):
     def open_config(self, config_path = None):
         # TODO there is no error handling here...
         if config_path is not None:
-            with open(str(config_path)) as f:
-                # so I can pass it once and update it more easily
-                self.config.storage = load(f, Loader=Loader)
+            try:
+                with open(str(config_path)) as f:
+                    # so I can pass it once and update it more easily
+                    self.config.storage = load(f, Loader=Loader)
+            except FileNotFoundError:
+                self.config.storage = {}
 
             self.config["config_path"] = config_path
             for cat in self.options.values():
@@ -358,6 +367,12 @@ class FolderOption(ConfigEditorOption):
     def _dialog_title(self) -> str:
         raise NotImplementedError
 
+
+    @property
+    def _optional(self) -> bool:
+        return True
+
+
     def init_widgets(self):
         self.setLayout(QtWidgets.QHBoxLayout(self))
         self.layout().addWidget(QtWidgets.QLabel(self._label, self))
@@ -377,13 +392,14 @@ class FolderOption(ConfigEditorOption):
             return
 
         if self.path.text():
-            start_path = self.path.text()
+            start_path = self.core_dir / self.path.text()
         else:
             start_path = self.core_dir
 
         dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, str(start_path))
         if dir:
-            dir = Path(dir).relative_to(core_dir)
+            print(self.core_dir)
+            dir = Path(dir).relative_to(self.core_dir)
 
             self.path.setText(str(dir))
             self.updated.emit()
@@ -406,9 +422,11 @@ class FolderOption(ConfigEditorOption):
     def validate(self) -> List[str]:
         core_dir = self.core_dir
         if core_dir is not None:
-            if self.category not in self.config:
-                return []
-            if self.option not in self.config[self.category]:
+            dir = self.path.text()
+            if len(dir) == 0:
+                if not self._optional:
+                    return [f"[{self.category}] {self.option}: required directory not set!"]
+
                 return []
 
             dir: Path = core_dir / self.config[self.category][self.option]
@@ -679,7 +697,7 @@ class CoreDir(FolderOption):
 
         dir = QtWidgets.QFileDialog.getExistingDirectory(self, self._dialog_title, start_path)
         if dir:
-            dir = Path(dir).relative_to(Path(self.config["config_path"]).absolute().parent)
+            dir = Path(dir).relative_to(Path(self.config["config_path"]).resolve().parent)
             self.path.setText(str(dir))
             self.updated.emit()
 
@@ -699,6 +717,7 @@ class CoreDir(FolderOption):
 class WorkingDir(FolderOption):
     _label = "Working Directory"
     _dialog_title = "Choose a working directory:"
+    _optional = False
 
 
 @register_config_option("main", "top_module")

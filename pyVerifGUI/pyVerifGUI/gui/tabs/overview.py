@@ -115,6 +115,7 @@ class OverviewTab(QtWidgets.QWidget):
     def _open_config_editor(self, clicked=False, path=None) -> bool:
         """Slot that opens new configuration editor dialog"""
         config_dialog = ConfigEditorDialog(self)
+        config_dialog.updated.connect(self.config.reload_config)
         if path is None:
             if not self.config_selected:
                 rc = config_dialog.open()

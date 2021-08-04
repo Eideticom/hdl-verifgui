@@ -84,11 +84,10 @@ class Config(QtCore.QObject):
 
     def reload_config(self):
         """Reloads configuration and build, e.g. after an edit"""
-        build = self.build
-
         self.open_config(self.config_path)
 
-        self.open_build(build, reload=True)
+        if self.build is not None:
+            self.open_build(self.build, reload=True)
 
     def __getitem__(self, item):
         """I don't like typing self.config.config everywhere so "directly" access the config dictionary"""
@@ -125,11 +124,11 @@ class Config(QtCore.QObject):
 
     def open_config(self, location: PathLike):
         """Generate config from file"""
+        self.config_path = location
         if Path(location).exists():
             self.new_config_selected.emit(location)
             config = safe_load(open(location))
             if self.validate_config(location):
-                self.config_path = location
                 self._open_config(config, location)
             else:
                 QtWidgets.QMessageBox(
@@ -138,7 +137,6 @@ class Config(QtCore.QObject):
                     "Please correct your configuration.").exec_()
         else:
             # Open a new config dialog or something
-            self.config_path = location
             self.create_new_config.emit(location)
 
     def open_build(self, build: str, reload=False):
