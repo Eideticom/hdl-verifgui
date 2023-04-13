@@ -1,13 +1,13 @@
 [package]
 name = "rSVParser"
-version = "0.2.0"
-authors = ["David Lenfesty <david.lenfesty@eideticom.com>"]
-edition = "2018"
+version = "0.3.0"
+authors = ["David Lenfesty <david.lenfesty@eideticom.com>", "Danilo Ramos <danilo.ramos@eideticom.com"]
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sv-parser = "0.7.0"
+sv-parser = "0.13.1"
 serde = {version = "1.0", features = ["derive"]}
 serde_yaml = "0.8"
 structopt = "0.3"
